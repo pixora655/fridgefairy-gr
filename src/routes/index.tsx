@@ -229,9 +229,9 @@ function InviteCard({ store }: { store: Store }) {
 }
 
 function Ingredients(p: {
-  photo?: string; items: string[]; setItems: (f: (x: string[]) => string[]) => void;
+  photo?: string | undefined; items: string[]; setItems: (f: (x: string[]) => string[]) => void;
   filters: string[]; setFilters: (f: (x: string[]) => string[]) => void;
-  detecting: boolean; loading: boolean; error?: string; onGo: () => void; onRetake: () => void;
+  detecting: boolean; loading: boolean; error?: string | undefined; onGo: () => void; onRetake: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const add = () => {
@@ -351,7 +351,7 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-function RecipeSheet({ r, photo, store, onClose }: { r: Recipe; photo?: string; store: Store; onClose: () => void }) {
+function RecipeSheet({ r, photo, store, onClose }: { r: Recipe; photo?: string | undefined; store: Store; onClose: () => void }) {
   const [done, setDone] = useState(false);
   const [sharing, setSharing] = useState(false);
   async function share() {
