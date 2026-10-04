@@ -14,7 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      recipe_photo_cache: {
+        Row: {
+          fetched_at: string
+          photo: Json | null
+          recipe_key: string
+        }
+        Insert: {
+          fetched_at?: string
+          photo?: Json | null
+          recipe_key: string
+        }
+        Update: {
+          fetched_at?: string
+          photo?: Json | null
+          recipe_key?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

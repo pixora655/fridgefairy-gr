@@ -11,3 +11,4 @@
 
 - AI calls go through src/lib/ai.server.ts (streamed Responses, server-only) and are exposed via src/lib/chef.functions.ts — keeps the key server-side.
 - User data (favorites, cookbook, streak, invite) is local-first in src/lib/store.ts — swap for cloud sync later without touching UI.
+- Recipe imagery uses a shared RecipeImage and server-only stock search with a persistent cache and private stored copies; this prevents mismatched category photos, duplicate searches, and permanent provider hotlinks.

@@ -72,6 +72,7 @@
   --glow: oklch(0.66 0.19 38 / 45%);
   --shadow-pop: 0 18px 40px -12px oklch(0.66 0.19 38 / 55%);
   --shadow-soft: 0 8px 30px -12px oklch(0.3 0.05 45 / 22%);
+  --recipe-photo-gradient: linear-gradient(135deg, oklch(0.93 0.07 75), oklch(0.83 0.1 40));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -93,8 +94,11 @@
     --border: oklch(0.32 0.02 50);
     --input: oklch(0.32 0.02 50);
     --shadow-soft: 0 8px 30px -12px oklch(0 0 0 / 60%);
+    --recipe-photo-gradient: linear-gradient(135deg, oklch(0.36 0.06 75), oklch(0.28 0.07 40));
   }
 }
+
+.recipe-photo-fallback { background: var(--recipe-photo-gradient); }
 
 @layer base {
   * { border-color: var(--color-border); }

@@ -1,0 +1,1 @@
+DROP POLICY "Recipe photos are publicly viewable" ON storage.objects;

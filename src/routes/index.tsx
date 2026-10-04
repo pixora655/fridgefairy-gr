@@ -8,6 +8,7 @@ import { detectIngredients, suggestRecipes } from "@/lib/chef.functions";
 import { useChefStore } from "@/lib/store";
 import { FILTERS, type Recipe } from "@/lib/types";
 import { makeShareCard, shareBlob } from "@/lib/share-card";
+import { RecipeImage } from "@/components/recipe-image";
 import pasta from "@/assets/dish-pasta.jpg";
 import bowl from "@/assets/dish-bowl.jpg";
 import stirfry from "@/assets/dish-stirfry.jpg";
@@ -316,9 +317,9 @@ function Ingredients(p: {
 function RecipeCard({ r, onOpen, fav, onFav, delay }: { r: Recipe; onOpen: () => void; fav: boolean; onFav: () => void; delay: number }) {
   return (
     <article style={{ animationDelay: `${delay}ms` }} className="animate-rise overflow-hidden rounded-3xl bg-card shadow-soft">
-      <button onClick={onOpen} className="block w-full text-left">
+      <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpen(); } }} className="block w-full cursor-pointer text-left">
         <div className="relative">
-          <img src={DISH_IMG[r.category] ?? bowl} alt={r.title} loading="lazy" width={816} height={816} className="h-44 w-full object-cover" />
+          <RecipeImage recipe={r} className="h-44 w-full" />
           <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-extrabold ${r.missing.length ? "bg-card text-foreground" : "bg-primary text-primary-foreground"}`}>
             {r.missing.length ? `Missing ${r.missing.length}: ${r.missing.join(", ")}` : "Only what you have"}
           </span>
@@ -331,7 +332,7 @@ function RecipeCard({ r, onOpen, fav, onFav, delay }: { r: Recipe; onOpen: () =>
             <span className="flex items-center gap-1"><ChefHat className="h-4 w-4 text-primary" /> {r.difficulty}</span>
           </div>
         </div>
-      </button>
+      </div>
       <div className="flex justify-end px-4 pb-4 -mt-2">
         <button onClick={onFav} className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground">
           <Heart className={`h-5 w-5 ${fav ? "fill-primary text-primary" : ""}`} /> {fav ? "Saved" : "Save"}
@@ -365,7 +366,7 @@ function RecipeSheet({ r, photo, store, onClose }: { r: Recipe; photo?: string |
   return (
     <Sheet onClose={onClose}>
       <div className="relative">
-        <img src={DISH_IMG[r.category] ?? bowl} alt={r.title} className="h-56 w-full object-cover" />
+        <RecipeImage recipe={r} className="h-56 w-full" />
         <button onClick={onClose} className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-card/90" aria-label="Close"><X className="h-5 w-5" /></button>
       </div>
       <div className="space-y-5 px-5 pt-5">
@@ -435,7 +436,7 @@ function Cookbook({ store, onClose, onOpen }: { store: Store; onClose: () => voi
         <div className="space-y-3">
           {list.map((r, i) => (
             <button key={r.title + i} onClick={() => onOpen(r)} className="flex w-full items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-soft">
-              <img src={DISH_IMG[r.category] ?? bowl} alt="" className="h-16 w-16 rounded-xl object-cover" loading="lazy" />
+              <RecipeImage recipe={r} className="h-16 w-16 shrink-0 rounded-xl" credit={false} />
               <div>
                 <div className="font-bold">{r.title}</div>
                 <div className="text-sm text-muted-foreground">{r.minutes} min · {r.difficulty}</div>

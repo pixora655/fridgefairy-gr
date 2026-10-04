@@ -1,5 +1,20 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791127450678,
+      "tag": "0000_recipe_photo_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791127499255,
+      "tag": "0001_private_recipe_photo_storage",
+      "breakpoints": true
+    }
+  ]
 }
