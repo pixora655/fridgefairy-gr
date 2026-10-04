@@ -332,7 +332,6 @@ function RecipeCard({ r, onOpen, fav, onFav, delay }: { r: Recipe; onOpen: () =>
           </div>
         </div>
       </button>
-      <button onClick={onFav} aria-label="Save" className="sr-only">fav</button>
       <div className="flex justify-end px-4 pb-4 -mt-2">
         <button onClick={onFav} className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground">
           <Heart className={`h-5 w-5 ${fav ? "fill-primary text-primary" : ""}`} /> {fav ? "Saved" : "Save"}
