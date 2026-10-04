@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- AI calls go through src/lib/ai.server.ts (streamed Responses, server-only) and are exposed via src/lib/chef.functions.ts — keeps the key server-side.
+- User data (favorites, cookbook, streak, invite) is local-first in src/lib/store.ts — swap for cloud sync later without touching UI.

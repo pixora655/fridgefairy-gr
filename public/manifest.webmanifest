@@ -1,0 +1,11 @@
+{
+  "name": "Fridgie — Snap your fridge, get dinner",
+  "short_name": "Fridgie",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf5ec",
+  "theme_color": "#e2622f",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
