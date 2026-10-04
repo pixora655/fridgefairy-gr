@@ -19,7 +19,7 @@ function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, 
   ctx.restore();
 }
 
-export async function makeShareCard(opts: { fridge?: string; dish: string; title: string; minutes: number }) {
+export async function makeShareCard(opts: { fridge?: string | undefined; dish: string; title: string; minutes: number }) {
   const c = document.createElement("canvas");
   c.width = 1080;
   c.height = 1920;
