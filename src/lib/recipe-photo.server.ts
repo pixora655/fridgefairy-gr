@@ -1,4 +1,4 @@
-import { bestRecipePhoto, recipePhotoKey, recipePhotoQuery, type PhotoRecipe, type RecipePhoto, type PixabayHit } from './recipe-photo';
+import { bestRecipePhoto, recipePhotoKey, recipePhotoQueries, type PhotoRecipe, type RecipePhoto, type PixabayHit } from './recipe-photo';
 
 const pending = new Map<string, Promise<RecipePhoto | null>>();
 type StoredPhoto = { path: string; sourceUrl: string; photographer: string };
@@ -18,7 +18,7 @@ async function lookup(recipe: PhotoRecipe): Promise<RecipePhoto | null> {
   // Only server-owned, non-personal stock-photo cache operations use the privileged client.
   // Callers cannot supply storage paths, image URLs, or database operations.
   const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(recipePhotoKey(recipe)));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('v2' + recipePhotoKey(recipe)));
   const key = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('');
   async function sign(photo: StoredPhoto): Promise<RecipePhoto | null> {
     const { data } = await supabaseAdmin.storage.from('recipe-photos').createSignedUrl(photo.path, 7 * 86400);
@@ -31,14 +31,17 @@ async function lookup(recipe: PhotoRecipe): Promise<RecipePhoto | null> {
   // Cache even misses for 24 hours, as required by Pixabay. No automated retries.
   const { error: cacheError } = await supabaseAdmin.from('recipe_photo_cache').upsert({ recipe_key: key, photo: null, fetched_at: new Date().toISOString() });
   if (cacheError) return null;
-  const query = recipePhotoQuery(recipe);
-  if (!query) return null;
-  const endpoint = new URL('https://pixabay.com/api/');
-  endpoint.search = new URLSearchParams({ key: apiKey, q: query, category: 'food', orientation: 'horizontal', safesearch: 'true', image_type: 'photo', per_page: '30' }).toString();
-  const response = await fetch(endpoint);
-  if (!response.ok) return null;
-  const result = await response.json() as { hits?: PixabayHit[] };
-  const hit = bestRecipePhoto(recipe, result.hits ?? []);
+  let hit: PixabayHit | undefined;
+  const queries = recipePhotoQueries(recipe);
+  for (const [i, query] of queries.entries()) {
+    const endpoint = new URL('https://pixabay.com/api/');
+    endpoint.search = new URLSearchParams({ key: apiKey, q: query, category: 'food', orientation: 'horizontal', safesearch: 'true', image_type: 'photo', per_page: '30' }).toString();
+    const response = await fetch(endpoint);
+    if (!response.ok) { console.error('Pixabay search failed', response.status); continue; }
+    const result = await response.json() as { hits?: PixabayHit[] };
+    hit = bestRecipePhoto(recipe, result.hits ?? [], i < queries.length - 1);
+    if (hit) break;
+  }
   if (!hit) return null;
   const imageUrl = new URL(hit.webformatURL);
   if (imageUrl.protocol !== 'https:' || !['pixabay.com', 'cdn.pixabay.com'].includes(imageUrl.hostname)) return null;

@@ -24,7 +24,7 @@ export function RecipeImage({ recipe, className, credit = true }: { recipe: Phot
   const { data, isPending } = useQuery({
     queryKey: ['recipe-photo', key], enabled: visible, retry: false, staleTime: Infinity, gcTime: Infinity,
     queryFn: async () => {
-      const storageKey = `fc.photo.v1.${key}`;
+      const storageKey = `fc.photo.v2.${key}`;
       try {
         const raw = localStorage.getItem(storageKey);
         if (raw) {
