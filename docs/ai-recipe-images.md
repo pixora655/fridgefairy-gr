@@ -23,7 +23,7 @@ FLUX.1 Schnell (`@cf/black-forest-labs/flux-1-schnell`) μέσω Cloudflare Work
 - `CLOUDFLARE_AI_API_TOKEN`: κρυφό token μόνο με Workers AI Read/Edit, περιορισμένο στον συγκεκριμένο λογαριασμό. Όχι Global API Key, όχι DNS/Workers Scripts/Billing δικαιώματα.
 - `AI_RECIPE_IMAGES_DAILY_LIMIT=100`: ακέραιος 1–1000. Απουσία/0/μη έγκυρη τιμή απενεργοποιεί τη δημιουργία. Διατηρούμε 100 ή μικρότερο για τη δωρεάν λειτουργία.
 
-Secrets μόνο σε Production και Deploy Previews, χωρίς local-development exposure. Τα previews μοιράζονται site-wide image cache και ημερήσιο μετρητή με production.
+Τα τέσσερα server secrets αποθηκεύτηκαν στο Netlify στις 8 Οκτωβρίου 2026, μόνο σε Production και Deploy Previews, χωρίς local-development exposure. Τα previews μοιράζονται site-wide image cache και ημερήσιο μετρητή με production.
 
 ## Αντιστοίχιση στη συνταγή και εμφάνιση
 
