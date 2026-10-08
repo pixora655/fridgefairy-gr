@@ -9,7 +9,7 @@ type InputPart = { type: "input_text"; text: string } | { type: "input_image"; i
 export async function streamResponseText(content: InputPart[]): Promise<string> {
   const key = process.env["GEMINI_API_KEY"];
   if (!key) throw new GatewayError(503, "AI is not configured.");
-  const model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+  const model = process.env["GEMINI_MODEL"] || "gemini-3.5-flash";
   const parts = content.map((part) => {
     if (part.type === "input_text") return { text: part.text };
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(part.image_url);
@@ -24,7 +24,7 @@ export async function streamResponseText(content: InputPart[]): Promise<string> 
       signal: AbortSignal.timeout(50_000),
       body: JSON.stringify({
         contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
       }),
     });
   } catch {
