@@ -67,27 +67,33 @@ function App() {
   async function onFile(f?: File) {
     if (!f) return;
     setError(undefined);
-    const data = await resizeImage(f);
-    setPhoto(data);
-    setStep("ingredients");
     setBusy("detect");
-    const r = await detect({ data: { image: data } });
-    setBusy(null);
-    if (r.ok) {
-      setItems(r.ingredients);
-      if (!r.ingredients.length) setError("Couldn't spot food — add items manually below.");
-    } else setError(r.error + " You can add items manually.");
+    setStep("ingredients");
+    try {
+      const data = await resizeImage(f);
+      setPhoto(data);
+      const r = await detect({ data: { image: data } });
+      if (r.ok) {
+        setItems(r.ingredients);
+        if (!r.ingredients.length) setError("Couldn't spot food — add items manually below.");
+      } else setError(r.error + " You can add items manually.");
+    } catch {
+      setError("Couldn't read the photo. Please try again or add ingredients manually.");
+    } finally { setBusy(null); }
   }
 
   async function getRecipes() {
     setError(undefined);
     setBusy("recipes");
-    const r = await suggest({ data: { ingredients: items, filters, bonus: store.invited } });
-    setBusy(null);
-    if (r.ok) {
-      setRecipes(r.recipes);
-      setStep("results");
-    } else setError(r.error);
+    try {
+      const r = await suggest({ data: { ingredients: items, filters, bonus: store.invited } });
+      if (r.ok) {
+        setRecipes(r.recipes);
+        setStep("results");
+      } else setError(r.error);
+    } catch {
+      setError("Couldn't get dinner ideas. Please check your connection and try again.");
+    } finally { setBusy(null); }
   }
 
   return (
