@@ -4,6 +4,10 @@ const pending = new Map<string, Promise<RecipePhoto | null>>();
 type StoredPhoto = { path: string; sourceUrl: string; photographer: string };
 
 export async function findRecipePhoto(recipe: PhotoRecipe): Promise<RecipePhoto | null> {
+  if (process.env['AI_RECIPE_IMAGES_ENABLED'] === 'true') {
+    const { findAIRecipePhoto } = await import('./recipe-image-ai.server');
+    return findAIRecipePhoto(recipe);
+  }
   const inputKey = recipePhotoKey(recipe);
   const existing = pending.get(inputKey);
   if (existing) return existing;
