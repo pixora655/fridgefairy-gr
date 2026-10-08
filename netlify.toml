@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist/client"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The official TanStack Start adapter generates the SSR/server-function routing.
+# Do not add a catch-all /index.html redirect: this app uses SSR.
