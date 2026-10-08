@@ -21,7 +21,7 @@ vi.mock('@netlify/blobs', () => ({ getStore }));
 import { findAIRecipePhoto, generateRecipeImage, recipeImagePrompt } from './recipe-image-ai.server';
 const recipe = { title: 'Spinach omelette', uses: ['eggs', 'spinach'], missing: ['cheese'], description: 'Folded omelette', steps: ['Beat eggs', 'Cook and fold with spinach and cheese'] };
 const jpeg = Buffer.from([255, 216, 255, 217]).toString('base64');
-const accountId = 'b503ca0713822cd520a4a6317d2b7eae';
+const accountId = '00000000000000000000000000000000';
 const output = { success: true, result: { image: jpeg } };
 const request = vi.fn();
 beforeEach(() => {
