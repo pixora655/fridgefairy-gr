@@ -6,9 +6,10 @@ const { stores, getStore } = vi.hoisted(() => {
     let map = stores.get(name);
     if (!map) { map = new Map(); stores.set(name, map); }
     return {
-      getWithMetadata: vi.fn(async (key: string) => map!.has(key) ? { data: map!.get(key), etag: 'test' } : null),
-      setJSON: vi.fn(async (key: string, value: unknown, opts?: { onlyIfNew?: boolean }) => {
+      getWithMetadata: vi.fn(async (key: string) => map!.has(key) ? { data: map!.get(key), etag: JSON.stringify(map!.get(key)) } : null),
+      setJSON: vi.fn(async (key: string, value: unknown, opts?: { onlyIfNew?: boolean; onlyIfMatch?: string }) => {
         if (opts?.onlyIfNew && map!.has(key)) return { modified: false };
+        if (opts?.onlyIfMatch && opts.onlyIfMatch !== JSON.stringify(map!.get(key))) return { modified: false };
         map!.set(key, value); return { modified: true };
       }),
       delete: vi.fn(async (key: string) => { map!.delete(key); }),
@@ -20,13 +21,15 @@ vi.mock('@netlify/blobs', () => ({ getStore }));
 import { findAIRecipePhoto, generateRecipeImage, recipeImagePrompt } from './recipe-image-ai.server';
 const recipe = { title: 'Spinach omelette', uses: ['eggs', 'spinach'], missing: ['cheese'], description: 'Folded omelette', steps: ['Beat eggs', 'Cook and fold with spinach and cheese'] };
 const jpeg = Buffer.from([255, 216, 255, 217]).toString('base64');
-const output = { status: 'completed', output_image: { type: 'image', mime_type: 'image/jpeg', data: jpeg } };
+const accountId = 'b503ca0713822cd520a4a6317d2b7eae';
+const output = { success: true, result: { image: jpeg } };
 const request = vi.fn();
 beforeEach(() => {
   stores.clear(); vi.clearAllMocks(); vi.stubGlobal('fetch', request);
   vi.stubEnv('AI_RECIPE_IMAGES_ENABLED', 'true');
-  vi.stubEnv('GEMINI_IMAGE_API_KEY', 'test-only-secret');
+  vi.stubEnv('CLOUDFLARE_AI_API_TOKEN', 'test-only-secret');
   vi.stubEnv('AI_RECIPE_IMAGES_DAILY_LIMIT', '3');
+  vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', accountId);
   request.mockResolvedValue(new Response(JSON.stringify(output), { status: 200 }));
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
@@ -37,9 +40,9 @@ describe('AI recipe image preparation', () => {
     expect(getStore).not.toHaveBeenCalled(); expect(request).not.toHaveBeenCalled();
   });
   it('requires a separate image key and explicit positive daily limit', async () => {
-    vi.stubEnv('GEMINI_IMAGE_API_KEY', '');
+    vi.stubEnv('CLOUDFLARE_AI_API_TOKEN', '');
     expect(await findAIRecipePhoto(recipe)).toBeNull();
-    vi.stubEnv('GEMINI_IMAGE_API_KEY', 'test'); vi.stubEnv('AI_RECIPE_IMAGES_DAILY_LIMIT', '0');
+    vi.stubEnv('CLOUDFLARE_AI_API_TOKEN', 'test'); vi.stubEnv('AI_RECIPE_IMAGES_DAILY_LIMIT', '0');
     expect(await findAIRecipePhoto(recipe)).toBeNull(); expect(request).not.toHaveBeenCalled();
   });
   it('includes complete preparation and missing ingredients in prompt and cache key', () => {
@@ -47,18 +50,20 @@ describe('AI recipe image preparation', () => {
     expect(aiRecipePhotoKey(recipe)).not.toBe(aiRecipePhotoKey({ ...recipe, steps: ['Boil eggs'] }));
     expect(aiRecipePhotoKey(recipe)).not.toBe(aiRecipePhotoKey({ ...recipe, missing: [] }));
   });
-  it('uses the documented stateless image API, server key header and 1K horizontal format', async () => {
-    const photo = await generateRecipeImage(recipe, 'test-key');
+  it('uses only the free-tier Cloudflare model and server token header', async () => {
+    const photo = await generateRecipeImage(recipe, 'test-key', accountId);
     const [url, init] = request.mock.calls[0]!; const body = JSON.parse(init.body);
-    expect(url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
-    expect(init.headers['x-goog-api-key']).toBe('test-key'); expect(url).not.toContain('test-key');
-    expect(body.store).toBe(false); expect(body.model).toBe('gemini-3.1-flash-lite-image');
-    expect(body.response_format).toEqual({ type: 'image', mime_type: 'image/jpeg', aspect_ratio: '16:9', image_size: '1K' });
+    expect(url).toBe('https://api.cloudflare.com/client/v4/accounts/' + accountId + '/ai/run/@cf/black-forest-labs/flux-1-schnell');
+    expect(init.headers.Authorization).toBe('Bearer test-key'); expect(url).not.toContain('test-key');
+    expect(body.steps).toBe(4); expect(body.prompt.length).toBeLessThanOrEqual(2048);
     expect(photo.generatedByAI).toBe(true); expect(photo.url).toMatch(/^data:image\/jpeg;base64,/);
   });
-  it('supports model_output steps response', async () => {
-    request.mockResolvedValueOnce(new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [output.output_image] }] }), { status: 200 }));
-    expect((await generateRecipeImage(recipe, 'test')).generatedByAI).toBe(true);
+  it('supports PNG image output and rejects invalid account ids before fetch', async () => {
+    const png = Buffer.from([137,80,78,71,13,10,26,10]).toString('base64');
+    request.mockResolvedValueOnce(new Response(JSON.stringify({ success: true, result: { image: png } }), { status: 200 }));
+    expect((await generateRecipeImage(recipe, 'test', accountId)).url).toMatch(/^data:image\/png;base64,/);
+    await expect(generateRecipeImage(recipe, 'test', 'bad-id')).rejects.toThrow('Invalid image account');
+    expect(request).toHaveBeenCalledTimes(1);
   });
   it('reuses persistent cached images without another provider call', async () => {
     const first = await findAIRecipePhoto(recipe);
@@ -75,13 +80,22 @@ describe('AI recipe image preparation', () => {
     expect(await findAIRecipePhoto({ ...recipe, title: 'Another omelette' })).toBeNull();
     expect(await findAIRecipePhoto(recipe)).toEqual(first); expect(request).toHaveBeenCalledTimes(1);
   });
+  it('keeps the global cap during concurrent different recipes', async () => {
+    vi.stubEnv('AI_RECIPE_IMAGES_DAILY_LIMIT', '1');
+    const images = await Promise.all([findAIRecipePhoto(recipe), findAIRecipePhoto({ ...recipe, title: 'Another meal' })]);
+    expect(images.filter(Boolean)).toHaveLength(1); expect(request).toHaveBeenCalledTimes(1);
+  });
+  it('fails closed if persistent storage is unavailable', async () => {
+    getStore.mockImplementationOnce(() => { throw new Error('storage unavailable'); });
+    expect(await findAIRecipePhoto(recipe)).toBeNull(); expect(request).not.toHaveBeenCalled();
+  });
   it('does not retry failed provider requests or reveal details', async () => {
     request.mockResolvedValue(new Response('private provider error', { status: 429 }));
     expect(await findAIRecipePhoto(recipe)).toBeNull();
     expect(await findAIRecipePhoto(recipe)).toBeNull(); expect(request).toHaveBeenCalledTimes(1);
   });
   it('rejects a completed response without image bytes', async () => {
-    request.mockResolvedValueOnce(new Response(JSON.stringify({ status: 'completed' }), { status: 200 }));
-    await expect(generateRecipeImage(recipe, 'test')).rejects.toThrow('Missing image output');
+    request.mockResolvedValueOnce(new Response(JSON.stringify({ success: true, result: {} }), { status: 200 }));
+    await expect(generateRecipeImage(recipe, 'test', accountId)).rejects.toThrow('Missing or invalid image output');
   });
 });
