@@ -1,7 +1,7 @@
 import type { Recipe } from './types';
 
-export type RecipePhoto = { url: string; sourceUrl: string; photographer: string };
-export type PhotoRecipe = Pick<Recipe, 'title' | 'uses'>;
+export type RecipePhoto = { url: string; sourceUrl: string; photographer: string; generatedByAI?: boolean };
+export type PhotoRecipe = Pick<Recipe, 'title' | 'uses'> & { description?: string | undefined; steps?: string[] | undefined; missing?: string[] | undefined };
 const STOP = new Set(['a', 'an', 'the', 'with', 'and', 'of', 'in', 'on', 'style', 'easy', 'quick', 'fresh', 'delicious', 'salt', 'oil', 'water']);
 export function photoWords(text: string): string[] {
   return [...new Set(text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)))];
@@ -43,4 +43,9 @@ export function bestRecipePhoto(recipe: PhotoRecipe, hits: PixabayHit[], require
     const good = hit.imageWidth > hit.imageHeight && hit.imageWidth >= 640 && (!requireMain || tags.some(t => t.startsWith(main)));
     return { hit, good, score: words.filter(w => tags.includes(w)).length };
   }).filter(x => x.good).sort((a, b) => b.score - a.score)[0]?.hit;
+}
+
+// A photo belongs to the preparation method and all actual recipe ingredients.
+export function aiRecipePhotoKey(recipe: PhotoRecipe): string {
+  return JSON.stringify([recipe.title.trim().toLowerCase(), recipe.description?.trim().toLowerCase() ?? '', recipe.uses.map(x => x.trim().toLowerCase()).sort(), (recipe.missing ?? []).map(x => x.trim().toLowerCase()).sort(), (recipe.steps ?? []).map(x => x.trim().toLowerCase())]);
 }
