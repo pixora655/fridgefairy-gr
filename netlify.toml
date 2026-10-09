@@ -7,3 +7,7 @@
 
 # The official TanStack Start adapter generates the SSR/server-function routing.
 # Do not add a catch-all /index.html redirect: this app uses SSR.
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
