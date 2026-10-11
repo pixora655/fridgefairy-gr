@@ -221,6 +221,23 @@ describe("SQL security invariants (static; SQL not executed)", () => {
     new URL("../../supabase/migrations/20261009190000_fridgie_plus.sql", import.meta.url),
     "utf8",
   );
+  function hasValidDollarQuotedBodies(source: string) {
+    const definitions = source.match(/create function public\.plus_[\s\S]*?(?=revoke all|grant execute|create function|commit;|$)/g) ?? [];
+    return definitions.length === 4 && definitions.every(definition =>
+      /\bas \$\$[\s\S]*?\bend \$\$;/.test(definition) &&
+      !/\bas \$(?!\$)|\bend \$(?!\$);/.test(definition)
+    );
+  }
+  it("uses paired double-dollar delimiters for every PL/pgSQL function body", () => {
+    expect(hasValidDollarQuotedBodies(sql)).toBe(true);
+    const plan = sql.slice(sql.indexOf("create function public.plus_save_plan"));
+    expect(plan).toMatch(/\bas \$\$[\s\S]*?\bend \$\$;/);
+  });
+  it("rejects the exact single-dollar plus_save_plan delimiter regression", () => {
+    const start = sql.indexOf("create function public.plus_save_plan");
+    const brokenPlan = sql.slice(start).replace("as $$", () => "as $").replace("end $$;", () => "end $;");
+    expect(hasValidDollarQuotedBodies(sql.slice(0, start) + brokenPlan)).toBe(false);
+  });
   it("serializes reservations and uses success + pending", () => {
     expect(sql).toContain("pg_advisory_xact_lock");
     expect(sql).toContain("used+pending>=30");
