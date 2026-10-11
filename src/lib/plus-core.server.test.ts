@@ -144,7 +144,7 @@ describe("Quota orchestration and contract model", () => {
       runReservedAI(l.store("p"), async () => {
         throw Error("should not run");
       }),
-    ).rejects.toThrow("ήδη");
+    ).rejects.toThrow("already");
   });
   it("cross-user and changed payload IDs cannot reuse result", async () => {
     const l = new Ledger();
