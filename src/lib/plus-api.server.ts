@@ -39,21 +39,27 @@ async function rpc(name: string, args: Record<string, unknown>) {
       "idempotency_conflict",
     ];
     const code = known.find((c) => error.message.includes(c));
+    const messages: Record<string, string> = {
+      subscription_required: "A paid Plus subscription is required.",
+      quota_exhausted: "Your allowance for this paid billing cycle is exhausted.",
+      attempt_limit: "Too many attempts. Please try again later.",
+      idempotency_conflict: "This request ID was used with different content.",
+    };
     throw new PlusError(
       code === "idempotency_conflict" ? 409 : code === "attempt_limit" ? 429 : code ? 403 : 503,
-      code ?? "Η υπηρεσία δεν είναι διαθέσιμη.",
+      code ? messages[code]! : "The service is unavailable.",
     );
   }
   return data;
 }
 async function checked<T>(r: PromiseLike<{ data: T; error: unknown }>) {
   const { data, error } = await r;
-  if (error) throw new PlusError(503, "Η αποθήκευση δεν είναι διαθέσιμη.");
+  if (error) throw new PlusError(503, "Storage is unavailable.");
   return data;
 }
 async function paddle(path: string, method = "GET", body?: unknown) {
   if (!config().billing)
-    throw new PlusError(503, "Οι δοκιμαστικές πληρωμές δεν είναι ρυθμισμένες.");
+    throw new PlusError(503, "Sandbox payments are not configured.");
   const r = await fetch("https://sandbox-api.paddle.com" + path, {
     method,
     headers: {
@@ -63,14 +69,14 @@ async function paddle(path: string, method = "GET", body?: unknown) {
     ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(15000),
   });
-  if (!r.ok) throw new PlusError(502, "Η δοκιμαστική υπηρεσία πληρωμών δεν απάντησε.");
+  if (!r.ok) throw new PlusError(502, "The sandbox payment service did not respond.");
   return (await r.json()).data;
 }
 async function user(req: Request) {
   const token = /^Bearer (.+)$/.exec(req.headers.get("authorization") ?? "")?.[1];
-  if (!token) throw new PlusError(401, "Συνδεθείτε πρώτα.");
+  if (!token) throw new PlusError(401, "Please sign in first.");
   const { data, error } = await db().auth.getUser(token);
-  if (error || !data.user) throw new PlusError(401, "Η σύνδεση έχει λήξει.");
+  if (error || !data.user) throw new PlusError(401, "Your sign-in session has expired.");
   return data.user.id;
 }
 async function active(uid: string) {
@@ -83,7 +89,7 @@ async function active(uid: string) {
       .gt("paid_until", now)
       .maybeSingle(),
   );
-  if (!s) throw new PlusError(403, "Απαιτείται πληρωμένος κύκλος Plus.");
+  if (!s) throw new PlusError(403, "A paid Plus billing cycle is required.");
   const c = await checked(
     db()
       .from("plus_cycles")
@@ -95,16 +101,16 @@ async function active(uid: string) {
       .limit(1)
       .maybeSingle(),
   );
-  if (!c) throw new PlusError(403, "Δεν υπάρχει πληρωμένος κύκλος.");
+  if (!c) throw new PlusError(403, "No paid billing cycle is available.");
   return { subscription: s, cycle: c };
 }
 async function body(req: Request) {
   const raw = await req.text();
-  if (raw.length > 8_100_000) throw new PlusError(413, "Πολύ μεγάλο αίτημα.");
+  if (raw.length > 8_100_000) throw new PlusError(413, "The request is too large.");
   try {
     return JSON.parse(raw);
   } catch {
-    throw new PlusError(400, "Μη έγκυρο αίτημα.");
+    throw new PlusError(400, "Invalid request.");
   }
 }
 async function webhook(req: Request) {
@@ -190,9 +196,9 @@ export async function plusApi(req: Request) {
   try {
     const action = new URL(req.url).searchParams.get("action") ?? "status";
     if (action === "status" && req.method === "GET")
-      return json({ ...config(), price: "3,99 € / μήνα", taxInclusive: true, sandbox: true });
+      return json({ ...config(), price: "€3.99 / month", taxInclusive: true, sandbox: true });
     if (!config().ready)
-      throw new PlusError(503, "Το Plus δεν έχει ενεργοποιηθεί σε αυτό το περιβάλλον.");
+      throw new PlusError(503, "Plus is not enabled in this environment.");
     if (req.method === "POST" && action === "webhook") return await webhook(req);
     // Require same origin for all browser writes. Provider webhooks use signature instead.
     if (req.method === "POST") {
@@ -234,12 +240,12 @@ export async function plusApi(req: Request) {
     }
     if (req.method === "POST" && action === "checkout") {
       if (!config().billing)
-        throw new PlusError(503, "Οι δοκιμαστικές πληρωμές δεν είναι διαθέσιμες.");
+        throw new PlusError(503, "Sandbox payments are unavailable.");
       const existing = await checked(
         db().from("plus_subscriptions").select("user_id").eq("user_id", uid).maybeSingle(),
       );
       if (existing)
-        throw new PlusError(409, "Υπάρχει ήδη συνδρομή. Χρησιμοποιήστε τη διαχείριση συνδρομής.");
+        throw new PlusError(409, "A subscription already exists. Use subscription management.");
       const recent = await checked(
         db()
           .from("plus_checkouts")
@@ -247,7 +253,7 @@ export async function plusApi(req: Request) {
           .eq("user_id", uid)
           .gt("created_at", new Date(Date.now() - 3600000).toISOString()),
       );
-      if ((recent?.length ?? 0) >= 5) throw new PlusError(429, "Δοκιμάστε αργότερα.");
+      if ((recent?.length ?? 0) >= 5) throw new PlusError(429, "Please try again later.");
       // Server configured price only; no client amounts, user IDs or price IDs accepted.
       const price = await paddle("/prices/" + encodeURIComponent(process.env["PADDLE_PRICE_ID"]!));
       if (
@@ -259,7 +265,7 @@ export async function plusApi(req: Request) {
         price.tax_mode !== "internal" ||
         price.trial_period !== null
       )
-        throw new PlusError(503, "Η τιμή sandbox δεν ταιριάζει με 3,99 € με φόρους.");
+        throw new PlusError(503, "The sandbox price must be EUR 3.99 including tax.");
       const checkout = await checked(
         db().from("plus_checkouts").insert({ user_id: uid }).select("id").single(),
       );
@@ -388,7 +394,7 @@ export async function plusApi(req: Request) {
             db().from("plus_recipes").select("id").eq("user_id", uid).in("id", ids),
           );
           if (new Set(ids).size !== (owned?.length ?? 0))
-            throw new PlusError(403, "Μη διαθέσιμη συνταγή.");
+            throw new PlusError(403, "Recipe unavailable.");
         }
         // Single DB transaction via RPC keeps plan and shopping edits consistent.
         await rpc("plus_save_plan", {
@@ -408,14 +414,14 @@ export async function plusApi(req: Request) {
           )
         : [];
       if ((rows?.length ?? 0) !== new Set(b.ids).size)
-        throw new PlusError(403, "Μη διαθέσιμη συνταγή.");
+        throw new PlusError(403, "Recipe unavailable.");
       return json(shoppingFromRecipes((rows ?? []).map((r) => r.recipe)));
     }
     throw new PlusError(404, "Not found");
   } catch (e) {
     if (e instanceof PlusError) return json({ error: e.message }, e.status);
     if (e instanceof z.ZodError || e instanceof SyntaxError)
-      return json({ error: "Μη έγκυρα δεδομένα." }, 400);
-    return json({ error: "Η υπηρεσία δεν είναι διαθέσιμη. Δοκιμάστε αργότερα." }, 503);
+      return json({ error: "Invalid data." }, 400);
+    return json({ error: "The service is unavailable. Please try again later." }, 503);
   }
 }
