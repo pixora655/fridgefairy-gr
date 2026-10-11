@@ -116,6 +116,14 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <footer lang="el" className="mx-auto max-w-3xl border-t border-border px-5 py-6 text-sm">
+          <nav aria-label="Πολιτικές Fridgie" className="flex flex-wrap gap-4">
+            <a href="/privacy" className="inline-flex min-h-11 items-center rounded-md px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">Απόρρητο (προσχέδιο)</a>
+            <a href="/cookies" className="inline-flex min-h-11 items-center rounded-md px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">Cookies (προσχέδιο)</a>
+            <a href="mailto:pixora.studio.edits@gmail.com" className="inline-flex min-h-11 items-center rounded-md px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground">Επικοινωνία</a>
+          </nav>
+          <p className="mt-3 text-muted-foreground">Η διαχείριση διαφημιστικής συγκατάθεσης δεν έχει ενεργοποιηθεί.</p>
+        </footer>
         <Scripts />
       </body>
     </html>
