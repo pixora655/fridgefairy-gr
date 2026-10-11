@@ -1,6 +1,6 @@
 # Fridgie Plus — TEST branch only
 
-This is executable MVP code, not activation of a subscription service. Do not merge or enable production billing based on this PR. Defaults are disabled. No database migration was run, no real email was sent, no account was created, and no payment/account settings were changed during implementation.
+This is executable MVP code, not activation of a subscription service. Do not merge or enable production billing based on this PR. Defaults are disabled. The original implementation did not run database migrations or change remote settings. The isolated test migration was subsequently applied by the parent on 2026-10-11 under separate authorization (see database status below). No real email was sent, no user account was created, and no Paddle payments were configured.
 
 ## What is implemented
 
@@ -42,11 +42,13 @@ Build-time public values:
 
 Do not put provider API/service-role keys in VITE variables. Do not inspect or paste secret values into chat/logs. Setting all flags is not enough: SQL migration, auth redirect allowlist, price, notification destination, API permissions, and default payment URL must be configured by an authorized operator.
 
-## SQL migration — manual, not applied
+## SQL migration — applied to isolated TEST project on 2026-10-11
 
 `supabase/migrations/20261009190000_fridgie_plus.sql`
 
-Review in a disposable test project first. Tables: `plus_subscriptions`, `plus_cycles`, `plus_usage_requests`, `plus_recipes`, `plus_meal_plans`, `plus_shopping_lists`, `plus_checkouts`, `plus_events`. RPCs: `plus_reserve`, `plus_finish`, `plus_apply_payment`, `plus_save_plan`. Migration is transactional but intentionally not tied to deploy build. No remote database access/settings changes are authorized by this implementation.
+On 2026-10-11 the parent, under newly granted isolated-test authorization, corrected the `plus_save_plan` single-dollar delimiter syntax defect to paired `$` delimiters and successfully applied this migration to FREE Supabase project `ksufrkbbfargigpnffzn` (`fridgie-plus-test`, Frankfurt, organization `zxgclzqmpbpfhlsmtfcu`). Parent verified all eight tables with RLS enabled and zero rows. Advisors reported INFO only for intentionally server-only `plus_checkouts` / `plus_events` having no client policies. This follow-up performs no database or remote-settings actions. No users, email delivery, Paddle or end-to-end flows are configured/tested; live quota concurrency and authenticated RLS isolation remain unverified.
+
+For any other project, review in a disposable test project first. Tables: `plus_subscriptions`, `plus_cycles`, `plus_usage_requests`, `plus_recipes`, `plus_meal_plans`, `plus_shopping_lists`, `plus_checkouts`, `plus_events`. RPCs: `plus_reserve`, `plus_finish`, `plus_apply_payment`, `plus_save_plan`. Migration is transactional but intentionally not tied to deploy build. No further remote database access/settings changes are authorized by this corrective follow-up.
 
 Sign-in uses a separate `fridgie-plus-auth` browser storage key and Supabase PKCE URL handling at `/plus`. An authorized operator must configure email OTP/magic link delivery and redirect allowlist for the exact deploy-preview `/plus` URL. Auth creates accounts only when an actual future user requests sign-in; no implementation test sends emails or creates accounts. Supabase should enforce email request rate limits and email verification.
 
@@ -62,9 +64,9 @@ Sign-in uses a separate `fridgie-plus-auth` browser storage key and Supabase PKC
 
 `node node_modules/vite/bin/vite.js build`, `node node_modules/typescript/bin/tsc --noEmit`, `node node_modules/vitest/vitest.mjs run` use existing cached dependencies. No large toolchain/package installation. The existing npm PowerShell entrypoint hung; direct Node entrypoints were used instead. Initial strict-null TypeScript errors and Node test setup's unguarded `window` were fixed before the passing rerun.
 
-Latest local result: **59 tests passed in 7 files**, TypeScript passed and Vite client/SSR build passed. An additional standalone esbuild function packaging smoke check was attempted twice but blocked by this Windows native sandbox filesystem (`Access is denied` while traversing parent directories). Actual Netlify function packaging/deployment still needs deploy-preview verification.
+Latest local result: **61 tests passed in 7 files**, TypeScript passed and Vite client/SSR build passed. An additional standalone esbuild function packaging smoke check was attempted twice but blocked by this Windows native sandbox filesystem (`Access is denied` while traversing parent directories). Actual Netlify function packaging/deployment still needs deploy-preview verification.
 
-Tests cover fail-closed flags, HMAC body tampering/replay, invalid/duplicate webhooks, failed renewal, provider total mismatch, verified reconciliation RPC arguments, checkout ownership, invalid auth, cross-origin writes, account owner filters, plan/shopping atomic edits and foreign recipe rejection. Quota concurrency/30th/31st/cycle-reset tests are a deterministic **contract model**, and migration RLS/locking/dedup checks are **static**. They are not an executed PostgreSQL/RLS integration test.
+Tests cover fail-closed flags, HMAC body tampering/replay, invalid/duplicate webhooks, failed renewal, provider total mismatch, verified reconciliation RPC arguments, checkout ownership, invalid auth, cross-origin writes, account owner filters, plan/shopping atomic edits and foreign recipe rejection. Quota concurrency/30th/31st/cycle-reset tests are a deterministic **contract model**, and migration RLS/locking/dedup checks are **static**. They are not a PostgreSQL/RLS runtime integration test. The parent subsequently confirmed successful migration application and empty-table RLS checks, not authenticated isolation/quota concurrency. Two new delimiter regression tests verify paired `$` quoting and reject the original single-dollar `plus_save_plan` defect.
 
 ## Required sandbox/integration matrix (NOT executed)
 
@@ -89,7 +91,7 @@ Tests cover fail-closed flags, HMAC body tampering/replay, invalid/duplicate web
 
 ## Known limitations / release blockers
 
-- No isolated database, auth delivery or Paddle sandbox credentials/config were supplied/activated; end-to-end tests, SQL execution/concurrency and deploy function routing are therefore not certified. Do not describe this as production-ready.
+- The isolated test database migration now exists and passed application/table-RLS checks as reported above. Auth delivery and Paddle sandbox configuration are not activated; end-to-end flows, live SQL concurrency/authenticated isolation and deploy function routing are therefore not certified. Do not describe this as production-ready.
 - New paid quotas protect only the dedicated Plus APIs. Existing Free `detectIngredients`/`suggestRecipes` remain available, unchanged, and are **not an enforceable premium AI paywall**. New Free limits were not authorized. Local Free favorites/history are not migrated/deleted.
 - Reservations remain pending if a server crashes or result persistence fails after AI execution. This is conservative (no overspending), not automatic refund. An authorized operator must inspect a stuck request and only mark it failed once execution is definitively ended; no unsafe timeout auto-release is shipped.
 - Webhook provider re-fetch is the payment reconciliation path; account refresh also re-fetches subscription display state. There is no scheduled reconciliation worker, dashboard event replay UI, automated receipt/refund/dispute handling or cancel-sync background job. Refund/dispute/chargeback revocation needs additional explicit policy and implementation before production billing.
