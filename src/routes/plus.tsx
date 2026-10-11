@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { plusAuth, plusRequest, openSandboxCheckout } from "@/lib/plus-client";
+import { sendPlusEmailRequest } from "@/lib/plus-auth-messages";
 import type { Recipe } from "@/lib/types";
 export const Route = createFileRoute("/plus")({ component: PlusPage });
 type Saved = { id: string; recipe: Recipe };
@@ -37,7 +38,7 @@ export function PlusPage() {
     try {
       await work();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Παρουσιάστηκε σφάλμα.");
+      setMessage(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -54,7 +55,7 @@ export function PlusPage() {
           );
         }
       })
-      .catch(() => setMessage("Το Plus δεν είναι ακόμη διαθέσιμο σε αυτό το περιβάλλον."));
+      .catch(() => setMessage("Plus is not yet available in this environment."));
     if (!auth)
       return () => {
         mounted = false;
@@ -96,7 +97,7 @@ export function PlusPage() {
     if (result.ok) {
       setRetry(null);
       if (result.ingredients) setIngredients(result.ingredients.join(", "));
-      setMessage(result.ingredients ? "Τα υλικά αναγνωρίστηκαν." : "Οι συνταγές αποθηκεύτηκαν.");
+      setMessage(result.ingredients ? "Ingredients detected." : "Recipes saved.");
     } else {
       setRetry(null);
       setMessage(result.error);
@@ -113,18 +114,18 @@ export function PlusPage() {
   };
   const button = { ...field, cursor: "pointer", background: "#173b28", color: "white" };
   return (
-    <main style={style} lang="el">
+    <main style={style} lang="en">
       <a href="/">← Fridgie Free</a>
       <header style={{ padding: "32px 0" }}>
-        <p>FRIDGIE PLUS · ΔΟΚΙΜΑΣΤΙΚΟ</p>
-        <h1 style={{ fontSize: 40 }}>Η εβδομάδα σου, οργανωμένη.</h1>
+        <p>FRIDGIE PLUS · SANDBOX PREVIEW</p>
+        <h1 style={{ fontSize: 40 }}>Your week, sorted.</h1>
         <p>
-          3,99 € / μήνα, με φόρους. 30 επιτυχημένες δημιουργίες συνταγών και 30 αναγνωρίσεις
-          φωτογραφιών ανά πληρωμένο κύκλο.
+          €3.99 / month, tax included. 30 successful recipe generations and 30 photo detections
+          per paid billing cycle.
         </p>
         <p>
-          Μία δημιουργία επιστρέφει 3 συνταγές. Εβδομαδιαίο πλάνο 7 γευμάτων από αποθηκευμένες
-          συνταγές, χωρίς επιπλέον AI.
+          Each generation returns 3 recipes. Plan 7 weekly meals from your saved recipes,
+          with no extra AI calls.
         </p>
       </header>
       <p role="status" aria-live="polite">
@@ -132,29 +133,28 @@ export function PlusPage() {
       </p>
       {!ready && (
         <aside style={field}>
-          Δεν έχει ενεργοποιηθεί το Plus. Δεν γίνονται πραγματικές χρεώσεις. Το Free παραμένει
-          διαθέσιμο χωρίς αλλαγές.
+          Plus is not enabled here. No real charges are made. Free remains
+          available and unchanged.
         </aside>
       )}
       <section style={{ ...field, margin: "20px 0" }}>
-        <h2>Λογαριασμός και συνδρομή</h2>
-        <a href="/account">Σελίδα λογαριασμού</a>
+        <h2>Account and subscription</h2>
+        <a href="/account">Account page</a>
         {!signed ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
               run(async () => {
                 const auth = plusAuth();
-                if (!auth || !ready) throw Error("Η σύνδεση δεν είναι ρυθμισμένη.");
-                const { error } = await auth.auth.signInWithOtp({
+                if (!auth || !ready) throw Error("Sign-in is not configured.");
+                const accepted = await sendPlusEmailRequest(() => auth.auth.signInWithOtp({
                   email,
                   options: {
                     emailRedirectTo: window.location.origin + "/plus",
                     shouldCreateUser: true,
                   },
-                });
-                if (error) throw Error("Η αποστολή συνδέσμου δεν ολοκληρώθηκε.");
-                setMessage("Ελέγξτε το email σας για τον ασφαλή σύνδεσμο σύνδεσης.");
+                }));
+                setMessage(accepted);
               });
             }}
           >
@@ -170,7 +170,7 @@ export function PlusPage() {
               />
             </label>{" "}
             <button style={button} disabled={!ready || busy}>
-              Σύνδεση με email
+              Sign in by email
             </button>
           </form>
         ) : (
@@ -184,20 +184,20 @@ export function PlusPage() {
                 })
               }
             >
-              Αποσύνδεση
+              Sign out
             </button>
             <button style={field} disabled={busy} onClick={() => run(refresh)}>
-              Ανανέωση κατάστασης
+              Refresh status
             </button>
             <p>
               {account?.cycle
-                ? `Συνταγές ${account.cycle.recipe_used}/30 · Φωτογραφίες ${account.cycle.photo_used}/30 · μέχρι ${new Date(account.cycle.ends_at).toLocaleDateString("el-GR")}`
-                : "Δεν υπάρχει ενεργός πληρωμένος κύκλος."}
+                ? `Recipes ${account.cycle.recipe_used}/30 · Photos ${account.cycle.photo_used}/30 · until ${new Date(account.cycle.ends_at).toLocaleDateString("en-GB")}`
+                : "No active paid billing cycle."}
             </p>
             {account?.subscription?.cancel_at && (
               <p>
-                Η ακύρωση έχει προγραμματιστεί. Η πρόσβαση διατηρείται μέχρι το τέλος του πληρωμένου
-                κύκλου.
+                Cancellation is scheduled. Access continues until the end of the paid
+                billing cycle.
               </p>
             )}
             <button
@@ -215,24 +215,24 @@ export function PlusPage() {
               }
             >
               {account?.subscription
-                ? "Διαχείριση / ακύρωση (sandbox)"
-                : "Δοκιμαστική συνδρομή (sandbox)"}
+                ? "Manage / cancel (sandbox)"
+                : "Test subscription (sandbox)"}
             </button>
           </>
         )}
         {!billing && (
           <p>
-            Η πληρωμή και η διαχείριση συνδρομής είναι απενεργοποιημένες μέχρι να ρυθμιστεί το
-            Paddle sandbox.
+            Payments and subscription management are disabled until Paddle sandbox
+            is configured.
           </p>
         )}
       </section>
       {signed && account?.cycle && (
         <>
           <section style={field}>
-            <h2>Οι Plus συνταγές μου</h2>
+            <h2>My Plus recipes</h2>
             <label>
-              Υλικά, χωρισμένα με κόμμα{" "}
+              Ingredients, separated by commas{" "}
               <input
                 style={{ ...field, width: "100%" }}
                 value={ingredients}
@@ -255,10 +255,10 @@ export function PlusPage() {
                 )
               }
             >
-              Δημιουργία 3 συνταγών
+              Generate 3 recipes
             </button>{" "}
             <label style={field}>
-              Αναγνώριση φωτογραφίας{" "}
+              Detect ingredients from a photo{" "}
               <input
                 disabled={busy}
                 type="file"
@@ -267,7 +267,7 @@ export function PlusPage() {
                   const f = e.target.files?.[0];
                   if (!f) return;
                   run(async () => {
-                    if (f.size > 5_500_000) throw Error("Η φωτογραφία πρέπει να είναι έως 5,5 MB.");
+                    if (f.size > 5_500_000) throw Error("The photo must be 5.5 MB or smaller.");
                     const image = await new Promise<string>((resolve, reject) => {
                       const r = new FileReader();
                       r.onload = () => resolve(String(r.result));
@@ -286,7 +286,7 @@ export function PlusPage() {
                 disabled={busy}
                 onClick={() => run(() => generate(retry.payload, retry.id))}
               >
-                Έλεγχος / επανάληψη ίδιου αιτήματος
+                Check / retry the same request
               </button>
             )}
             <div
@@ -301,25 +301,25 @@ export function PlusPage() {
                 <article style={field} key={r.id}>
                   <h3>{r.recipe.title}</h3>
                   <p>{r.recipe.description}</p>
-                  <p>{r.recipe.minutes} λεπτά</p>
+                  <p>{r.recipe.minutes} minutes</p>
                   <details>
-                    <summary>Οδηγίες και υλικά</summary>
+                    <summary>Steps and ingredients</summary>
                     <p>{r.recipe.uses.join(", ")}</p>
                     <ol>
                       {r.recipe.steps.map((s, i) => (
                         <li key={i}>{s}</li>
                       ))}
                     </ol>
-                    <p>Λείπουν: {r.recipe.missing.join(", ") || "τίποτα"}</p>
+                    <p>Missing: {r.recipe.missing.join(", ") || "nothing"}</p>
                   </details>
                 </article>
               ))}
             </div>
           </section>
           <section style={{ ...field, marginTop: 20 }}>
-            <h2>Εβδομαδιαίο πλάνο</h2>
+            <h2>Weekly meal plan</h2>
             <label>
-              Δευτέρα έναρξης{" "}
+              Week starting Monday{" "}
               <input
                 style={field}
                 type="date"
@@ -327,7 +327,7 @@ export function PlusPage() {
                 onChange={(e) => setWeek(e.target.value)}
               />
             </label>
-            {["Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή"].map(
+            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
               (day, i) => (
                 <label key={day} style={{ display: "block", margin: "10px 0" }}>
                   {day}{" "}
@@ -338,7 +338,7 @@ export function PlusPage() {
                       setSlots((a) => a.map((s, n) => (n === i ? e.target.value || null : s)))
                     }
                   >
-                    <option value="">Χωρίς γεύμα</option>
+                    <option value="">No meal</option>
                     {recipes.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.recipe.title}
@@ -348,10 +348,10 @@ export function PlusPage() {
                 </label>
               ),
             )}
-            <h3>Λίστα αγορών</h3>
+            <h3>Shopping list</h3>
             <p>
-              Προκύπτει από τα υλικά που λείπουν. Οι ποσότητες δεν υπολογίζονται· ελέγξτε τις
-              συνταγές. Η δημιουργία νέας λίστας αντικαθιστά τις μη αποθηκευμένες αλλαγές.
+              Based on missing ingredients. Quantities are not calculated; check your
+              recipes. Generating a new list replaces unsaved edits.
             </p>
             <button
               style={button}
@@ -362,12 +362,12 @@ export function PlusPage() {
                 })
               }
             >
-              Δημιουργία λίστας από το πλάνο
+              Build a shopping list from the plan
             </button>
             {items.map((item, i) => (
               <div key={i}>
                 <input
-                  aria-label={"Αγοράστηκε " + item.name}
+                  aria-label={"Purchased " + item.name}
                   type="checkbox"
                   checked={item.checked}
                   onChange={(e) =>
@@ -377,7 +377,7 @@ export function PlusPage() {
                   }
                 />
                 <input
-                  aria-label="Υλικό"
+                  aria-label="Ingredient"
                   style={field}
                   value={item.name}
                   onChange={(e) =>
@@ -385,12 +385,12 @@ export function PlusPage() {
                   }
                 />
                 <button style={field} onClick={() => setItems((a) => a.filter((_, n) => n !== i))}>
-                  Αφαίρεση
+                  Remove
                 </button>
               </div>
             ))}
             <input
-              aria-label="Νέο υλικό"
+              aria-label="New ingredient"
               style={field}
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
@@ -403,7 +403,7 @@ export function PlusPage() {
                 setNewItem("");
               }}
             >
-              Προσθήκη
+              Add
             </button>
             <p>
               <button
@@ -412,19 +412,19 @@ export function PlusPage() {
                 onClick={() =>
                   run(async () => {
                     await plusRequest("plan", "POST", { slots, items }, "&week=" + week);
-                    setMessage("Το πλάνο και η λίστα αποθηκεύτηκαν.");
+                    setMessage("Meal plan and shopping list saved.");
                   })
                 }
               >
-                Αποθήκευση πλάνου και λίστας
+                Save meal plan and shopping list
               </button>
             </p>
           </section>
         </>
       )}
       <footer style={{ marginTop: 24 }}>
-        Τα τοπικά αγαπημένα και το ιστορικό του Free δεν μεταφέρονται, δεν διαγράφονται και δεν
-        αλλάζουν. Το δοκιμαστικό Plus δεν ενεργοποιεί paywall στα υπάρχοντα Free APIs.
+        Your local Free favorites and history are not migrated, deleted or
+        changed. This Plus preview does not add a paywall to existing Free APIs.
       </footer>
     </main>
   );
