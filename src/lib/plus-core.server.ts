@@ -100,14 +100,14 @@ export async function runReservedAI(
   const r = await store.reserve();
   if (r.state === "success" || r.state === "failed") return r.result;
   if (r.state !== "reserved")
-    throw new PlusError(409, "Το αίτημα εκτελείται ήδη. Δοκιμάστε ξανά με το ίδιο ID.");
+    throw new PlusError(409, "This request is already running. Retry with the same ID.");
   let result: unknown;
   try {
     result = await work();
   } catch {
     return await store.finish(false, {
       ok: false,
-      error: "Η AI δεν ολοκλήρωσε το αίτημα. Δεν χρεώθηκε χρήση.",
+      error: "AI could not complete the request. No successful usage was charged.",
     });
   }
   // Do not mark failed when persistence itself fails: conservatively retain reservation.
