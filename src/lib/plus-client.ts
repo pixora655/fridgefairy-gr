@@ -26,7 +26,7 @@ export async function plusRequest(action: string, method = "GET", data?: unknown
     ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
   });
   const result = await r.json();
-  if (!r.ok) throw Error(result.error ?? "Η υπηρεσία δεν απάντησε.");
+  if (!r.ok) throw Error(result.error ?? "The service did not respond.");
   return result;
 }
 
@@ -39,7 +39,7 @@ let paddleLoad: Promise<PaddleSandbox> | undefined;
 export async function openSandboxCheckout(transactionId: string) {
   const token = import.meta.env["VITE_PADDLE_CLIENT_TOKEN"];
   if (!token?.startsWith("test_") || !/^txn_[a-z0-9]+$/.test(transactionId))
-    throw Error("Το checkout sandbox δεν είναι ρυθμισμένο.");
+    throw Error("Sandbox checkout is not configured.");
   if (!paddleLoad)
     paddleLoad = new Promise((resolve, reject) => {
       const script = document.createElement("script");
@@ -48,7 +48,7 @@ export async function openSandboxCheckout(transactionId: string) {
       script.onload = () => {
         const paddle = (window as unknown as { Paddle?: PaddleSandbox }).Paddle;
         if (!paddle) {
-          reject(Error("Το Paddle sandbox δεν φορτώθηκε."));
+          reject(Error("Paddle sandbox could not be loaded."));
           return;
         }
         paddle.Environment.set("sandbox");
@@ -57,7 +57,7 @@ export async function openSandboxCheckout(transactionId: string) {
       };
       script.onerror = () => {
         paddleLoad = undefined;
-        reject(Error("Το Paddle sandbox δεν φορτώθηκε."));
+        reject(Error("Paddle sandbox could not be loaded."));
       };
       document.head.appendChild(script);
     });
