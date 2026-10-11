@@ -77,6 +77,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
+      // Ownership verification only; do not load ads before a reviewed consent/CMP setup.
+      { name: "google-adsense-account", content: "ca-pub-9630412836616941" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Fridgie — Snap your fridge, get dinner" },
       { name: "description", content: "Turn a photo of your fridge into dinner ideas in seconds." },
