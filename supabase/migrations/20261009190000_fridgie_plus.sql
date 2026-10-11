@@ -127,14 +127,14 @@ grant execute on function public.plus_reserve(uuid,uuid,text,text) to service_ro
 grant execute on function public.plus_finish(uuid,uuid,boolean,jsonb) to service_role;
 grant execute on function public.plus_apply_payment(text,timestamptz,text,uuid,text,text,text,timestamptz,timestamptz,text,timestamptz) to service_role;
 create function public.plus_save_plan(p_user uuid,p_week date,p_slots jsonb,p_items jsonb)
-returns void language plpgsql security definer set search_path=public,pg_temp as $
+returns void language plpgsql security definer set search_path=public,pg_temp as $$
 begin
  if jsonb_array_length(p_slots)<>7 or jsonb_array_length(p_items)>100 then raise exception 'invalid_plan'; end if;
  if exists(select 1 from jsonb_array_elements_text(p_slots) as slot(value) where slot.value is not null and not exists(select 1 from plus_recipes where id=slot.value::uuid and user_id=p_user)) then raise exception 'recipe_owner'; end if;
  if not exists(select 1 from plus_subscriptions s join plus_cycles c on c.user_id=s.user_id where s.user_id=p_user and s.paid_until>now() and c.starts_at<=now() and c.ends_at>now()) then raise exception 'subscription_required'; end if;
  insert into plus_meal_plans(user_id,week,slots) values(p_user,p_week,p_slots) on conflict(user_id,week) do update set slots=excluded.slots,updated_at=now();
  insert into plus_shopping_lists(user_id,week,items) values(p_user,p_week,p_items) on conflict(user_id,week) do update set items=excluded.items,updated_at=now();
-end $;
+end $$;
 revoke all on function public.plus_save_plan(uuid,date,jsonb,jsonb) from public,anon,authenticated;
 grant execute on function public.plus_save_plan(uuid,date,jsonb,jsonb) to service_role;
 commit;
