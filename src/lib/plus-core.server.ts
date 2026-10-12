@@ -1,3 +1,4 @@
+import { logAIError } from "./plus-ai-diagnostics.server";
 import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { z } from "zod";
 export class PlusError extends Error {
@@ -96,6 +97,7 @@ export async function runReservedAI(
     finish: (success: boolean, result: unknown) => Promise<unknown>;
   },
   work: () => Promise<unknown>,
+  diagnosticContext?: { requestId: string; kind: string },
 ) {
   const r = await store.reserve();
   if (r.state === "success" || r.state === "failed") return r.result;
@@ -104,11 +106,19 @@ export async function runReservedAI(
   let result: unknown;
   try {
     result = await work();
-  } catch {
-    return await store.finish(false, {
-      ok: false,
-      error: "AI could not complete the request. No successful usage was charged.",
-    });
+  } catch (error) {
+    if (diagnosticContext) logAIError(error, diagnosticContext);
+    try {
+      const failed = await store.finish(false, {
+        ok: false,
+        error: "AI could not complete the request. No successful usage was charged.",
+      });
+      if (diagnosticContext) logAIError(null, diagnosticContext, { stage: "release", code: "released" });
+      return failed;
+    } catch (releaseError) {
+      if (diagnosticContext) logAIError(null, diagnosticContext, { stage: "release", code: "release_failed" });
+      throw releaseError;
+    }
   }
   // Do not mark failed when persistence itself fails: conservatively retain reservation.
   return await store.finish(true, result);
