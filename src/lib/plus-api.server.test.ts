@@ -36,7 +36,7 @@ vi.mock("@supabase/supabase-js", () => ({
     },
   }),
 }));
-vi.mock("./ai.server", () => ({ streamResponseText: vi.fn(), extractJson: JSON.parse }));
+vi.mock("./ai.server", async (importOriginal) => ({ ...(await importOriginal<typeof import("./ai.server")>()), streamResponseText: vi.fn(), extractJson: JSON.parse }));
 import { plusApi } from "./plus-api.server";
 const env = {
   FRIDGIE_PLUS_ENABLED: "true",
