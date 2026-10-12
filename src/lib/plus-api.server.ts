@@ -12,7 +12,7 @@ import {
   shoppingFromRecipes,
   runReservedAI,
 } from "./plus-core.server";
-import { streamResponseText, extractJson } from "./ai.server";
+import { GatewayError, streamResponseText, extractJson } from "./ai.server";
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -345,9 +345,10 @@ export async function plusApi(req: Request) {
             .object({ recipes: z.array(recipeSchema).length(3) })
             .parse(extractJson(text));
           if (parsed.recipes.slice(0, 2).some((r) => r.missing.length))
-            throw Error("Invalid ingredients");
+            throw new GatewayError(502, "Invalid ingredients", { stage: "validation", code: "invalid_ingredients" });
           return { ok: true, ...parsed };
         },
+        { requestId: id, kind: data.kind },
       );
       return json(result);
     }
