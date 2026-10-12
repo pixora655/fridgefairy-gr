@@ -112,6 +112,7 @@ function App() {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
+        <a href="/plus" className="rounded-full border border-border px-3 py-2 text-sm font-bold">Plus · test</a>
         <button
           onClick={() => setBook(true)}
           className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2.5 text-sm font-bold"
