@@ -10,24 +10,34 @@ type InputPart = { type: "input_text"; text: string } | { type: "input_image"; i
 export async function streamResponseText(content: InputPart[]): Promise<string> {
   const key = process.env["GEMINI_API_KEY"];
   if (!key) throw new GatewayError(503, "AI is not configured.", { stage: "config", code: "missing_key" });
-  const model = process.env["GEMINI_MODEL"] || "gemini-3.5-flash";
+  const model = process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
   const parts = content.map((part) => {
     if (part.type === "input_text") return { text: part.text };
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(part.image_url);
     if (!match) throw new GatewayError(400, "Please use a JPEG, PNG or WebP image.");
     return { inlineData: { mimeType: match[1]!, data: match[2]! } };
   });
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts }],
+    generationConfig: { maxOutputTokens: 8192, responseMimeType: "application/json" },
+  });
+  const deadline = AbortSignal.timeout(50_000);
+  const request = {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    signal: deadline,
+    body,
+  } as const;
   let res: Response;
   try {
-    res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      signal: AbortSignal.timeout(50_000),
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: "application/json" },
-      }),
-    });
+    res = await fetch(endpoint, request);
+    if (res.status === 503) {
+      // Google recommends exponential backoff for transient 503s. Retry once only.
+      try { await res.body?.cancel(); } catch { /* response cleanup is best effort */ }
+      await new Promise((resolve) => setTimeout(resolve, 1_000 + Math.floor(Math.random() * 250)));
+      res = await fetch(endpoint, request);
+    }
   } catch {
     throw new GatewayError(504, "The AI took too long to respond. Please try again.", { stage: "provider", code: "transport_error", model });
   }
