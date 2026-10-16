@@ -31,7 +31,7 @@ async function fail(work = providerWork) {
   expect(result).toEqual({ ok: false, error: "AI could not complete the request. No successful usage was charged." });
   expect(l.counters).toEqual({ used: 0, pending: 0, saved: 0 }); expect(l.state()).toBe("failed");
   expect(JSON.stringify(logs.mock.calls)).not.toContain(sensitive);
-  const records = logs.mock.calls.map(call => JSON.parse(String(call[0])));
+  const records = logs.mock.calls.map((call: unknown[]) => JSON.parse(String(call[0])));
   expect(records.at(-1)).toMatchObject({ stage: "release", code: "released", ...context });
   return records;
 }
@@ -53,8 +53,8 @@ describe("Offline AI diagnostics and quota release", () => {
     const text = await streamResponseText([{ type: "input_text", text: "eggs and tomatoes" }]);
     expect(text).toBe('{"recipes":[]}');
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[0][0])).toContain("/models/gemini-3.6-flash:generateContent");
-    const options = fetchMock.mock.calls[1][1] as RequestInit;
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("/models/gemini-3.6-flash:generateContent");
+    const options = fetchMock.mock.calls[1]![1] as RequestInit;
     const payload = JSON.parse(String(options.body));
     expect(payload.generationConfig).toEqual({ maxOutputTokens: 8192, responseMimeType: "application/json" });
     expect(payload.generationConfig).not.toHaveProperty("temperature");
