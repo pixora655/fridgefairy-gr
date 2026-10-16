@@ -54,7 +54,7 @@ export async function streamResponseText(content: InputPart[]): Promise<string> 
   const data = await res.json() as { candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
   const candidate = data.candidates?.[0];
   const text = (candidate?.content?.parts ?? []).filter(p => !p.thought).map(p => p.text ?? "").join("");
-  if (!text.trim() || candidate?.finishReason === "MAX_TOKENS") throw new GatewayError(502, "The AI couldn't produce a complete answer. Please try again.", { stage: "provider", code: "empty_response", model, finishReason: candidate?.finishReason });
+  if (!text.trim() || candidate?.finishReason === "MAX_TOKENS") throw new GatewayError(502, "The AI couldn't produce a complete answer. Please try again.", { stage: "provider", code: "empty_response", model, ...(candidate?.finishReason ? { finishReason: candidate.finishReason } : {}) });
   return text;
 }
 
