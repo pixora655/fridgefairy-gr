@@ -12,7 +12,7 @@ beforeEach(() => {
   fetchMock = vi.fn().mockRejectedValue(new Error("Unexpected offline fetch " + sensitive));
   vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("GEMINI_API_KEY", sensitive);
-  vi.stubEnv("GEMINI_MODEL", "gemini-3.5-flash");
+  vi.stubEnv("GEMINI_MODEL", "gemini-3.6-flash");
   logs = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
@@ -42,7 +42,30 @@ describe("Offline AI diagnostics and quota release", () => {
   });
   it.each([400,401,403,404,429,500])("provider HTTP %i releases once and never logs body/message", async status => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED", message: sensitive, details: [sensitive] } }), { status }));
-    const records = await fail(); expect(fetchMock).toHaveBeenCalledTimes(1); expect(records[0]).toMatchObject({ stage: "provider", providerStatus: status, code: "RESOURCE_EXHAUSTED", model: "gemini-3.5-flash" });
+    const records = await fail(); expect(fetchMock).toHaveBeenCalledTimes(1); expect(records[0]).toMatchObject({ stage: "provider", providerStatus: status, code: "RESOURCE_EXHAUSTED", model: "gemini-3.6-flash" });
+  });
+  it("retries a 503 once with backoff, explicit Gemini 3.6 model and JSON output", async () => {
+    vi.stubEnv("GEMINI_MODEL", "");
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "UNAVAILABLE" } }), { status: 503 }))
+      .mockResolvedValueOnce(response('{"recipes":[]}'));
+    const text = await streamResponseText([{ type: "input_text", text: "eggs and tomatoes" }]);
+    expect(text).toBe('{"recipes":[]}');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/models/gemini-3.6-flash:generateContent");
+    const options = fetchMock.mock.calls[1][1] as RequestInit;
+    const payload = JSON.parse(String(options.body));
+    expect(payload.generationConfig).toEqual({ maxOutputTokens: 8192, responseMimeType: "application/json" });
+    expect(payload.generationConfig).not.toHaveProperty("temperature");
+  });
+  it("does not retry a persistent 503 more than once", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "UNAVAILABLE" } }), { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "UNAVAILABLE" } }), { status: 503 }));
+    const records = await fail();
+    expect(records[0]).toMatchObject({ stage: "provider", providerStatus: 503, code: "UNAVAILABLE", model: "gemini-3.6-flash" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
   it("redacts malicious provider code and transport exception", async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: sensitive, message: sensitive } }), { status: 403 }));
