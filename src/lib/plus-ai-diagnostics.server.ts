@@ -3,7 +3,7 @@ export type AIStage = "config" | "provider" | "parse" | "validation" | "release"
 export type AIDetails = { stage: AIStage; status?: number; code?: string; model?: string; finishReason?: string };
 const codes = new Set(["INVALID_ARGUMENT", "UNAUTHENTICATED", "PERMISSION_DENIED", "NOT_FOUND", "RESOURCE_EXHAUSTED", "FAILED_PRECONDITION", "INTERNAL", "UNAVAILABLE", "DEADLINE_EXCEEDED", "missing_key", "transport_error", "empty_response", "invalid_json", "invalid_ingredients", "release_failed", "released", "unknown"]);
 export function safeDiagnosticCode(value: unknown): string { return typeof value === "string" && codes.has(value) ? value : "unknown"; }
-const models = new Set(["gemini-3.5-flash"]);
+const models = new Set(["gemini-3.5-flash", "gemini-3.6-flash"]);
 const reasons = new Set(["STOP", "MAX_TOKENS", "SAFETY", "RECITATION", "OTHER", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "MALFORMED_FUNCTION_CALL"]);
 const fields = new Set(["recipes", "ingredients", "title", "description", "minutes", "difficulty", "category", "uses", "missing", "steps", "tags"]);
 // Only known metadata is emitted. Never stringify an exception, message, stack or payload.
