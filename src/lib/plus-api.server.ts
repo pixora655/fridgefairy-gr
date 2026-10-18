@@ -36,17 +36,19 @@ async function rpc(name: string, args: Record<string, unknown>) {
       "subscription_required",
       "quota_exhausted",
       "attempt_limit",
+      "concurrency_limit",
       "idempotency_conflict",
     ];
     const code = known.find((c) => error.message.includes(c));
     const messages: Record<string, string> = {
       subscription_required: "A paid Plus subscription is required.",
       quota_exhausted: "Your allowance for this paid billing cycle is exhausted.",
+      concurrency_limit: "Too many operations in progress. Please wait and try again.",
       attempt_limit: "Too many attempts. Please try again later.",
       idempotency_conflict: "This request ID was used with different content.",
     };
     throw new PlusError(
-      code === "idempotency_conflict" ? 409 : code === "attempt_limit" ? 429 : code ? 403 : 503,
+      code === "idempotency_conflict" ? 409 : (code === "attempt_limit" || code === "concurrency_limit") ? 429 : code ? 403 : 503,
       code ? messages[code]! : "The service is unavailable.",
     );
   }
@@ -236,6 +238,7 @@ export async function plusApi(req: Request) {
         subscription: display,
         cycle: entitlement?.cycle ?? null,
         billingReady: config().billing,
+        usagePolicy: await rpc("plus_usage_policy", {}),
       });
     }
     if (req.method === "POST" && action === "checkout") {
@@ -310,7 +313,7 @@ export async function plusApi(req: Request) {
       const result = await runReservedAI(
         {
           reserve: () =>
-            rpc("plus_reserve", {
+            rpc("plus_reserve_unlimited", {
               p_user: uid,
               p_id: id,
               p_kind: data.kind,
