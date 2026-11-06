@@ -34,6 +34,8 @@ export const suggestRecipes = createServerFn({ method: "POST" })
         ingredients: z.array(z.string().max(40)).min(1).max(40),
         filters: z.array(z.string().max(20)).max(5),
         bonus: z.boolean().optional(),
+        dietary: z.array(z.string().max(30)).max(6).optional(),
+        servings: z.number().int().min(1).max(8).optional(),
       })
       .parse(d),
   )
@@ -46,6 +48,8 @@ export const suggestRecipes = createServerFn({ method: "POST" })
           text: `You are a friendly home chef for busy young people. Available ingredients: ${data.ingredients.join(", ")}. Assume basic pantry staples exist (salt, pepper, oil, water).
 Filters: ${data.filters.length ? data.filters.join(", ") : "none"} (Quick = under 15 min).
 ${data.bonus ? "Make the recipes a bit more creative/restaurant-style." : ""}
+${data.dietary?.length ? `Dietary needs: ${data.dietary.join(", ")} — every recipe must respect these.` : ""}
+${data.servings && data.servings > 1 ? `Cook for ${data.servings} people; scale quantities and steps accordingly.` : ""}
 Suggest exactly 3 recipes. Recipes 1-2 must use ONLY the available ingredients (missing = []). Recipe 3 may need 1-2 extra ingredients listed in "missing".
 Reply ONLY with JSON: {"recipes":[{"title":string,"description":string (max 15 words),"minutes":number,"difficulty":"Easy"|"Medium"|"Hard","category":"pasta"|"bowl"|"stirfry"|"eggs","uses":string[],"missing":string[],"steps":string[] (4-7 short steps),"tags":string[]}]}`,
         },

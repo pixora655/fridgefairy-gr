@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import {
-  Camera, ChefHat, Clock, Flame, Heart, ImagePlus, Loader2, Plus, Share2, Sparkles, X, ArrowLeft, Check, BookOpen, Gift,
+  Camera, ChefHat, Clock, Crown, Flame, Heart, ImagePlus, Loader2, Plus, Share2, Sparkles, X, ArrowLeft, Check, BookOpen, Gift,
 } from "lucide-react";
 import { detectIngredients, suggestRecipes } from "@/lib/chef.functions";
 import { useChefStore } from "@/lib/store";
@@ -86,7 +86,15 @@ function App() {
     setError(undefined);
     setBusy("recipes");
     try {
-      const r = await suggest({ data: { ingredients: items, filters, bonus: store.invited } });
+      const r = await suggest({
+        data: {
+          ingredients: items,
+          filters,
+          bonus: store.invited,
+          ...(store.prefs.dietary.length ? { dietary: store.prefs.dietary } : {}),
+          ...(store.prefs.servings > 1 ? { servings: store.prefs.servings } : {}),
+        },
+      });
       if (r.ok) {
         setRecipes(r.recipes);
         setStep("results");
@@ -112,12 +120,17 @@ function App() {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <button
-          onClick={() => setBook(true)}
-          className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2.5 text-sm font-bold"
-        >
-          <Flame className="h-4 w-4 text-primary" /> {store.streak} · <BookOpen className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/plus" className="grid h-11 w-11 place-items-center rounded-full bg-secondary" aria-label="Fridgie Plus">
+            <Crown className="h-5 w-5 text-primary" />
+          </Link>
+          <button
+            onClick={() => setBook(true)}
+            className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2.5 text-sm font-bold"
+          >
+            <Flame className="h-4 w-4 text-primary" /> {store.streak} · <BookOpen className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       <input
