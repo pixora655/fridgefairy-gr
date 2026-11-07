@@ -224,6 +224,7 @@ describe("Plus endpoint security", () => {
     expect(m.getUser).not.toHaveBeenCalled();
   });
   it("filters account reads by verified user, never client body user ID", async () => {
+    m.rpc.mockResolvedValueOnce({data:{version:"unlimited-v1",recipeLimit:null,photoLimit:null},error:null});
     m.queue.push({ data: null, error: null }, { data: null, error: null });
     expect((await plusApi(browser("account"))).status).toBe(200);
     expect(
@@ -282,4 +283,23 @@ describe("Plus endpoint security", () => {
     });
     expect((await plusApi(browser("checkout", {}))).status).toBe(503);
   });
+});
+
+describe("Unlimited preview endpoint (mocked, no network)",()=>{
+ const id="00000000-0000-4000-8000-000000000001";
+ const payloads=[{id,kind:"recipe",ingredients:["eggs"],filters:[]},{id,kind:"photo",image:"data:image/png;base64,YQ=="}];
+ it.each(payloads)("uses unlimited RPC and replays stored $kind without AI", async payload=>{
+  const saved={ok:true,marker:"already-accounted"};
+  m.rpc.mockResolvedValueOnce({data:{state:"success",result:saved},error:null});
+  const response=await plusApi(browser("ai",payload));expect(response.status).toBe(200);expect(await response.json()).toEqual(saved);
+  expect(m.rpc).toHaveBeenCalledTimes(1);expect(m.rpc.mock.calls[0]?.[0]).toBe("plus_reserve_unlimited");
+ });
+ it.each(["attempt_limit","concurrency_limit"])("returns 429 for %s",async code=>{
+  m.rpc.mockResolvedValueOnce({data:null,error:{message:code}});
+  expect((await plusApi(browser("ai",payloads[0]))).status).toBe(429);
+ });
+ it("fails closed when new RPC migration is absent",async()=>{
+  m.rpc.mockResolvedValueOnce({data:null,error:{message:"function not found"}});
+  expect((await plusApi(browser("ai",payloads[0]))).status).toBe(503);expect(m.rpc).toHaveBeenCalledTimes(1);
+ });
 });

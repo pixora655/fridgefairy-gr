@@ -120,8 +120,8 @@ export function PlusPage() {
         <p>FRIDGIE PLUS · SANDBOX PREVIEW</p>
         <h1 style={{ fontSize: 40 }}>Your week, sorted.</h1>
         <p>
-          €3.99 / month, tax included. 30 successful recipe generations and 30 photo detections
-          per paid billing cycle.
+          €3.99 / month, tax included. Recipe generations and photo detections.
+          Your verified usage policy is shown below after sign-in.
         </p>
         <p>
           Each generation returns 3 recipes. Plan 7 weekly meals from your saved recipes,
@@ -191,7 +191,9 @@ export function PlusPage() {
             </button>
             <p>
               {account?.cycle
-                ? `Recipes ${account.cycle.recipe_used}/30 · Photos ${account.cycle.photo_used}/30 · until ${new Date(account.cycle.ends_at).toLocaleDateString("en-GB")}`
+                ? account.usagePolicy?.version === "unlimited-v1"
+                  ? `Unlimited recipe generations and photo detections · Used: ${account.cycle.recipe_used} generations, ${account.cycle.photo_used} photos · until ${new Date(account.cycle.ends_at).toLocaleDateString("en-GB")} · Fair-use safety: 60 attempts/hour, 30 in progress per type.`
+                  : "Usage policy could not be verified. Refresh status before generating."
                 : "No active paid billing cycle."}
             </p>
             {account?.subscription?.cancel_at && (
