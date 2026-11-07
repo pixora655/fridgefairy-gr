@@ -8,7 +8,7 @@ type RedirectTarget = (typeof ALLOWED_REDIRECTS)[number];
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search): { redirect: RedirectTarget } => {
-    const r = typeof search.redirect === "string" ? search.redirect : "";
+    const r = typeof search["redirect"] === "string" ? search["redirect"] : "";
     return { redirect: (ALLOWED_REDIRECTS as readonly string[]).includes(r) ? (r as RedirectTarget) : "/plus" };
   },
   head: () => ({

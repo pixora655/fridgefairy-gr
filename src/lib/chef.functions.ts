@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 const recipeSchema = z.object({
   title: z.string().min(1).max(160), description: z.string().max(300),
@@ -35,21 +36,26 @@ export const suggestRecipes = createServerFn({ method: "POST" })
         filters: z.array(z.string().max(20)).max(5),
         bonus: z.boolean().optional(),
         dietary: z.array(z.string().max(30)).max(6).optional(),
-        servings: z.number().int().min(1).max(8).optional(),
+        servings: z.number().int().min(1).max(6).optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const { streamResponseText, extractJson } = await import("./ai.server");
     try {
+      const { getVerifiedRecipePrefs } = await import("./plus.server");
+      const prefs = await getVerifiedRecipePrefs(getRequestHeader("authorization"), {
+        ...(data.dietary ? { dietary: data.dietary } : {}),
+        ...(data.servings !== undefined ? { servings: data.servings } : {}),
+      });
       const text = await streamResponseText([
         {
           type: "input_text",
           text: `You are a friendly home chef for busy young people. Available ingredients: ${data.ingredients.join(", ")}. Assume basic pantry staples exist (salt, pepper, oil, water).
 Filters: ${data.filters.length ? data.filters.join(", ") : "none"} (Quick = under 15 min).
 ${data.bonus ? "Make the recipes a bit more creative/restaurant-style." : ""}
-${data.dietary?.length ? `Dietary needs: ${data.dietary.join(", ")} — every recipe must respect these.` : ""}
-${data.servings && data.servings > 1 ? `Cook for ${data.servings} people; scale quantities and steps accordingly.` : ""}
+${prefs.dietary?.length ? `Dietary needs: ${prefs.dietary.join(", ")} — every recipe must respect these.` : ""}
+${prefs.servings ? `Cook for ${prefs.servings} people; scale quantities and steps accordingly.` : ""}
 Suggest exactly 3 recipes. Recipes 1-2 must use ONLY the available ingredients (missing = []). Recipe 3 may need 1-2 extra ingredients listed in "missing".
 Reply ONLY with JSON: {"recipes":[{"title":string,"description":string (max 15 words),"minutes":number,"difficulty":"Easy"|"Medium"|"Hard","category":"pasta"|"bowl"|"stirfry"|"eggs","uses":string[],"missing":string[],"steps":string[] (4-7 short steps),"tags":string[]}]}`,
         },

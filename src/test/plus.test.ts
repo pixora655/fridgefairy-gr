@@ -23,14 +23,24 @@ describe("Plus price", () => {
 
 describe("isPlusStatus", () => {
   it("grants Plus only for active or trialing subscriptions", () => {
-    expect(isPlusStatus("active")).toBe(true);
-    expect(isPlusStatus("trialing")).toBe(true);
+    expect(isPlusStatus("active", "2026-12-01T00:00:00Z", Date.parse("2026-11-07T00:00:00Z"))).toBe(true);
+    expect(isPlusStatus("trialing", "2026-12-01T00:00:00Z", Date.parse("2026-11-07T00:00:00Z"))).toBe(true);
   });
 
   it("denies Plus for any other status", () => {
     for (const s of ["canceled", "past_due", "inactive", "", null, undefined]) {
-      expect(isPlusStatus(s)).toBe(false);
+      expect(isPlusStatus(s, "2026-12-01T00:00:00Z", Date.parse("2026-11-07T00:00:00Z"))).toBe(false);
     }
+  });
+  it("denies expired entitlements even if their status is active", () => {
+    expect(isPlusStatus("active", "2026-11-06T00:00:00Z", Date.parse("2026-11-07T00:00:00Z"))).toBe(false);
+  });
+  it("denies access exactly at the period end", () => {
+    expect(isPlusStatus("trialing", "2026-11-07T00:00:00Z", Date.parse("2026-11-07T00:00:00Z"))).toBe(false);
+  });
+  it("denies missing or invalid expiration dates", () => {
+    expect(isPlusStatus("active", null)).toBe(false);
+    expect(isPlusStatus("active", "invalid")).toBe(false);
   });
 });
 

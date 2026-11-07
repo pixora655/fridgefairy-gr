@@ -8,8 +8,10 @@ export const PLUS_PRICE_LABEL = "€3.99/month";
 export const DIETARY_OPTIONS = ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Nut-free"] as const;
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
-export function isPlusStatus(status?: string | null): boolean {
-  return !!status && ACTIVE_STATUSES.has(status);
+export function isPlusStatus(status?: string | null, currentPeriodEnd?: string | null, now = Date.now()): boolean {
+  if (!status || !ACTIVE_STATUSES.has(status) || !currentPeriodEnd) return false;
+  const end = Date.parse(currentPeriodEnd);
+  return Number.isFinite(end) && end > now;
 }
 
 export type Prefs = { dietary: string[]; servings: number };

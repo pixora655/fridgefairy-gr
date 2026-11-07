@@ -15,7 +15,7 @@ export const getMyEntitlement = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const status = data?.status ?? null;
     return {
-      isPlus: isPlusStatus(status),
+      isPlus: isPlusStatus(status, data?.current_period_end),
       status,
       currentPeriodEnd: data?.current_period_end ?? null,
     };

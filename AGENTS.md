@@ -13,3 +13,4 @@
 - User data (favorites, cookbook, streak, invite) is local-first in src/lib/store.ts — swap for cloud sync later without touching UI.
 - Recipe imagery uses a shared RecipeImage and server-only stock search with a persistent cache and private stored copies; this prevents mismatched category photos, duplicate searches, and permanent provider hotlinks.
 - Plus entitlement is server-side only: the public.subscriptions row (RLS read-own) is read via getMyEntitlement in src/lib/plus.functions.ts; premium UI gates on that through useEntitlement/PlusGate, never on local state. Plus data (plan, shopping, prefs) stays local-first in src/lib/store.ts.
+- Premium recipe preferences require a verified bearer and an unexpired active/trialing subscription in the recipe handler; ignore unverified preferences so the free generator remains public.

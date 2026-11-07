@@ -5,10 +5,13 @@
 - [x] Verify photo behavior and preserve the existing design.
 
 # Fridgie Plus (€3.99/month)
-- [ ] Subscriptions table + server-side entitlement check.
-- [ ] Email login page (/auth).
-- [ ] Plus upgrade page with clear price + cancellation terms; truthful disabled checkout until payments are enabled.
-- [ ] Weekly meal planner, aggregated shopping list, dietary/serving preferences (Plus-gated).
-- [ ] Home nav entry; preferences passed into recipe suggestions.
-- [ ] Tests + build verification.
+- [x] Fix preview type errors and verify automatic build; test expiry and server preference authorization without publishing.
+- [x] Subscriptions table + server-side entitlement check.
+- [x] Email login page (/auth).
+- [x] Plus upgrade page with clear price + cancellation terms; truthful disabled checkout until payments are enabled.
+- [x] Weekly meal planner, aggregated shopping list, dietary/serving preferences (Plus-gated).
+- [x] Home nav entry; preferences passed into recipe suggestions only with server-verified Plus.
+- [x] Tests + build verification; mobile home and signed-out Plus routes checked.
+- [ ] Live photo → recipes: blocked by missing GEMINI_API_KEY in preview secure settings.
+- [ ] Signed-in Plus UI verification: blocked by no existing auth users/session; sign in or create an account in preview.
 - [ ] Blocked on user: enable built-in Stripe payments via the Lovable editor chat, then wire checkout, customer portal, and verified webhooks.

@@ -92,7 +92,7 @@ function App() {
           filters,
           bonus: store.invited,
           ...(store.prefs.dietary.length ? { dietary: store.prefs.dietary } : {}),
-          ...(store.prefs.servings > 1 ? { servings: store.prefs.servings } : {}),
+          servings: store.prefs.servings,
         },
       });
       if (r.ok) {
