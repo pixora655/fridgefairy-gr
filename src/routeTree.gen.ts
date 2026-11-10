@@ -15,6 +15,7 @@ import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PlusRouteImport } from './routes/plus'
 import { Route as PreferencesRouteImport } from './routes/preferences'
 import { Route as ShoppingRouteImport } from './routes/shopping'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ShoppingRoute = ShoppingRouteImport.update({
   path: '/shopping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/plus': typeof PlusRoute
   '/preferences': typeof PreferencesRoute
   '/shopping': typeof ShoppingRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/plus': typeof PlusRoute
   '/preferences': typeof PreferencesRoute
   '/shopping': typeof ShoppingRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/plus': typeof PlusRoute
   '/preferences': typeof PreferencesRoute
   '/shopping': typeof ShoppingRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/plan' | '/plus' | '/preferences' | '/shopping'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/plan'
+    | '/plus'
+    | '/preferences'
+    | '/shopping'
+    | '/api/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/plan' | '/plus' | '/preferences' | '/shopping'
+  to:
+    | '/'
+    | '/auth'
+    | '/plan'
+    | '/plus'
+    | '/preferences'
+    | '/shopping'
+    | '/api/stripe-webhook'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/plus'
     | '/preferences'
     | '/shopping'
+    | '/api/stripe-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +118,7 @@ export interface RootRouteChildren {
   PlusRoute: typeof PlusRoute
   PreferencesRoute: typeof PreferencesRoute
   ShoppingRoute: typeof ShoppingRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShoppingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlusRoute: PlusRoute,
   PreferencesRoute: PreferencesRoute,
   ShoppingRoute: ShoppingRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
