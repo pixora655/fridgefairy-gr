@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getMyEntitlement } from "./plus.functions";
 import { isPlusStatus } from "./plus";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Entitlement = {
   loading: boolean;
@@ -20,10 +21,15 @@ export function useEntitlement(): Entitlement {
   const q = useQuery({
     queryKey: ["entitlement"],
     queryFn: async () => {
+      // Wait for the client session (including one restored from an email
+      // link) before asking the server; no session means signed out.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return null;
       try {
         return await fetchEntitlement();
       } catch {
-        return null; // unauthorized → signed out
+        // Signed in but the check failed: stay signed in, not Plus.
+        return { isPlus: false, status: null, currentPeriodEnd: null };
       }
     },
     staleTime: 60_000,

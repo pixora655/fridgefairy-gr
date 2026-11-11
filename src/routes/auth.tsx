@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ChefHat, Loader2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,6 +34,19 @@ function AuthPage() {
   const [error, setError] = useState<string>();
   const [sent, setSent] = useState(false);
 
+  // Already signed in (e.g. returning from the email link): continue to the
+  // page the user was heading to instead of asking for their email again.
+  useEffect(() => {
+    let active = true;
+    const go = () => active && navigate({ to: redirect, replace: true });
+    supabase.auth.getSession().then(({ data }) => data.session && go());
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => session && go());
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, redirect]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(undefined);
@@ -43,7 +56,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirect)}` },
         });
         if (error) throw error;
         setSent(true);
