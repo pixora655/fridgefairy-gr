@@ -20,3 +20,20 @@ export const getMyEntitlement = createServerFn({ method: "GET" })
       currentPeriodEnd: data?.current_period_end ?? null,
     };
   });
+
+export const getBillingAvailability = createServerFn({ method: "GET" }).handler(async () => {
+  const { billingConfig } = await import("./stripe.server");
+  return Boolean(billingConfig());
+});
+
+export const openBilling = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) => value === "manage")
+  .handler(async ({ context, data }) => {
+    try {
+      const { startBilling } = await import("./stripe.server");
+      return await startBilling(context.userId, data);
+    } catch {
+      throw new Error("Billing is unavailable right now. Please try again later.");
+    }
+  });
