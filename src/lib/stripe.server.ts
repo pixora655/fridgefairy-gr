@@ -141,6 +141,7 @@ export async function startBilling(userId: string, manage: boolean) {
       customer,
       mode: "subscription",
       allowed_payment_method_types: ["card"],
+      managed_payments: { enabled: false },
       line_items: [{ price: config.price, quantity: 1 }],
       success_url: `${config.origin}/plus?checkout=success`,
       cancel_url: `${config.origin}/plus`,
