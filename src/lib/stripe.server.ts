@@ -43,6 +43,32 @@ export function billingConfig(report: (reason: string) => void = console.warn) {
 
 type Config = NonNullable<ReturnType<typeof billingConfig>>;
 
+function isPlusPrice(price: Stripe.Price, config: Config) {
+  return price.active && price.livemode === config.live && price.currency === "eur" &&
+    price.unit_amount === 399 && price.recurring?.interval === "month" &&
+    price.recurring.interval_count === 1;
+}
+
+export async function checkSandboxDependencies(config: Config) {
+  const stripe = new Stripe(config.key, { maxNetworkRetries: 0, timeout: 5000 });
+  try {
+    if (!isPlusPrice(await stripe.prices.retrieve(config.price), config)) {
+      return "[Stripe] Price must be an active sandbox subscription for EUR 3.99 per month.";
+    }
+  } catch {
+    return "[Stripe] Could not retrieve the configured price with the sandbox key.";
+  }
+
+  try {
+    const { error } = await supabaseAdmin.from("subscriptions").select("user_id").limit(1);
+    if (error) return "[Stripe] Cannot read subscriptions with the configured Supabase server credentials.";
+  } catch {
+    return "[Stripe] Cannot connect to Supabase with the configured server credentials.";
+  }
+
+  return null;
+}
+
 async function getCustomer(stripe: Stripe, userId: string) {
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
@@ -95,15 +121,7 @@ export async function startBilling(userId: string, manage: boolean) {
   }
 
   const price = await stripe.prices.retrieve(config.price);
-  if (
-    !price.active ||
-    price.livemode !== config.live ||
-    price.currency !== "eur" ||
-    price.unit_amount !== 399 ||
-    price.recurring?.interval !== "month" ||
-    price.recurring.interval_count !== 1
-  )
-    throw new Error("Invalid Plus price");
+  if (!isPlusPrice(price, config)) throw new Error("Invalid Plus price");
 
   const customer = await getCustomer(stripe, userId);
   const subscriptions = await stripe.subscriptions.list({ customer });

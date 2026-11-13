@@ -7,11 +7,12 @@ export const Route = createFileRoute("/api/stripe-webhook")({
         if (new URL(request.url).hostname !== "deploy-preview-9--fridgefairy-gr.netlify.app") {
           return new Response(null, { status: 404 });
         }
-        const { billingConfig } = await import("@/lib/stripe.server");
+        const { billingConfig, checkSandboxDependencies } = await import("@/lib/stripe.server");
         let message = "[Stripe] Sandbox configuration checks passed.";
         const config = billingConfig((reason) => { message = reason; });
-        return new Response(message, {
-          status: config ? 200 : 503,
+        const problem = config ? await checkSandboxDependencies(config) : message;
+        return new Response(problem ?? "[Stripe] Sandbox price and subscription database checks passed.", {
+          status: problem ? 503 : 200,
           headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
         });
       },
