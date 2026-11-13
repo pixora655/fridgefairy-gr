@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export function billingConfig() {
+export function billingConfig(report: (reason: string) => void = console.warn) {
   const {
     STRIPE_SECRET_KEY: key,
     STRIPE_PLUS_PRICE_ID: price,
@@ -9,7 +9,10 @@ export function billingConfig() {
     FRIDGIE_BILLING_ORIGIN: origin,
     STRIPE_BILLING_MODE: mode,
   } = process.env;
-  if (process.env["CONTEXT"] === "production") return null;
+  if (process.env["CONTEXT"] === "production") {
+    report("[Stripe] Billing disabled in production.");
+    return null;
+  }
   const missing = Object.entries({
     STRIPE_SECRET_KEY: key,
     STRIPE_PLUS_PRICE_ID: price,
@@ -19,20 +22,20 @@ export function billingConfig() {
     SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"],
   }).filter(([, value]) => !value).map(([name]) => name);
   if (!key || !price || !webhook || !origin || missing.length > 0) {
-    console.warn("[Stripe] Missing billing configuration:", missing.join(", "));
+    report(`[Stripe] Missing billing configuration: ${missing.join(", ")}`);
     return null;
   }
   if (mode !== "test" || !/^(sk|rk)_test_/.test(key)) {
-    console.warn("[Stripe] Billing requires test mode and a test secret key.");
+    report("[Stripe] Billing requires test mode and a test secret key.");
     return null;
   }
   try {
     if (new URL(origin).origin !== origin || !origin.startsWith("https://")) {
-      console.warn("[Stripe] Billing origin must be an exact HTTPS origin.");
+      report("[Stripe] Billing origin must be an exact HTTPS origin.");
       return null;
     }
   } catch {
-    console.warn("[Stripe] Billing origin is not a valid URL.");
+    report("[Stripe] Billing origin is not a valid URL.");
     return null;
   }
   return { key, price, webhook, origin, live: false };
