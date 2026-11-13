@@ -49,6 +49,15 @@ function resizeImage(file: File): Promise<string> {
   });
 }
 
+function recipeBrowserId() {
+  const key = "fridgie-recipe-browser-id";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem(key, id);
+  return id;
+}
+
 function App() {
   const store = useChefStore();
   const [step, setStep] = useState<Step>("home");
@@ -57,6 +66,7 @@ function App() {
   const [filters, setFilters] = useState<string[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [busy, setBusy] = useState<"detect" | "recipes" | null>(null);
+  const [upgrade, setUpgrade] = useState(false);
   const [error, setError] = useState<string>();
   const [open, setOpen] = useState<Recipe | null>(null);
   const [book, setBook] = useState(false);
@@ -84,10 +94,12 @@ function App() {
 
   async function getRecipes() {
     setError(undefined);
+    setUpgrade(false);
     setBusy("recipes");
     try {
       const r = await suggest({
         data: {
+          browserId: recipeBrowserId(),
           ingredients: items,
           filters,
           bonus: store.invited,
@@ -98,7 +110,10 @@ function App() {
       if (r.ok) {
         setRecipes(r.recipes);
         setStep("results");
-      } else setError(r.error);
+      } else {
+        setUpgrade("upgrade" in r && r.upgrade === true);
+        setError(r.error);
+      }
     } catch {
       setError("Couldn't get dinner ideas. Please check your connection and try again.");
     } finally { setBusy(null); }
@@ -154,6 +169,7 @@ function App() {
           detecting={busy === "detect"}
           loading={busy === "recipes"}
           error={error}
+          upgrade={upgrade}
           onGo={getRecipes}
           onRetake={() => fileRef.current?.click()}
         />
@@ -251,7 +267,7 @@ function InviteCard({ store }: { store: Store }) {
 function Ingredients(p: {
   photo?: string | undefined; items: string[]; setItems: (f: (x: string[]) => string[]) => void;
   filters: string[]; setFilters: (f: (x: string[]) => string[]) => void;
-  detecting: boolean; loading: boolean; error?: string | undefined; onGo: () => void; onRetake: () => void;
+  detecting: boolean; loading: boolean; upgrade: boolean; error?: string | undefined; onGo: () => void; onRetake: () => void;
 }) {
   const [draft, setDraft] = useState("");
   const add = () => {
@@ -322,10 +338,17 @@ function Ingredients(p: {
 
       {p.error && <p className="rounded-2xl bg-accent p-3 text-sm font-semibold text-accent-foreground">{p.error}</p>}
 
+      {p.upgrade && (
+        <Link to="/plus" className="flex h-16 items-center justify-center gap-2 rounded-full bg-primary text-lg font-extrabold text-primary-foreground">
+          <Crown className="h-5 w-5" /> Get unlimited recipes with Plus
+        </Link>
+      )}
+
       <button
+        hidden={p.upgrade}
         onClick={p.onGo}
         disabled={!p.items.length || p.loading || p.detecting}
-        className="sticky bottom-4 mt-auto flex h-16 w-full items-center justify-center gap-2 rounded-full bg-primary text-lg font-extrabold text-primary-foreground shadow-pop transition active:scale-[0.98] disabled:opacity-50"
+        className="sticky bottom-4 mt-auto flex [&[hidden]]:hidden h-16 w-full items-center justify-center gap-2 rounded-full bg-primary text-lg font-extrabold text-primary-foreground shadow-pop transition active:scale-[0.98] disabled:opacity-50"
       >
         {p.loading ? <><Loader2 className="h-5 w-5 animate-spin" /> Cooking up ideas…</> : <><Sparkles className="h-5 w-5" /> Get dinner ideas</>}
       </button>

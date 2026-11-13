@@ -41,6 +41,7 @@ export const Route = createFileRoute("/plus")({
 });
 
 const FEATURES = [
+  { icon: Crown, title: "Unlimited recipe generations", text: "Keep generating recipe ideas after your first two free generations." },
   {
     icon: CalendarRange,
     title: "Weekly meal planner",

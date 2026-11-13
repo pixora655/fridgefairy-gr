@@ -32,6 +32,7 @@ export const suggestRecipes = createServerFn({ method: "POST" })
   .inputValidator((d) =>
     z
       .object({
+        browserId: z.string().uuid(),
         ingredients: z.array(z.string().max(40)).min(1).max(40),
         filters: z.array(z.string().max(20)).max(5),
         bonus: z.boolean().optional(),
@@ -42,28 +43,44 @@ export const suggestRecipes = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { streamResponseText, extractJson } = await import("./ai.server");
+    const { reserveFreeGeneration } = await import("./recipe-quota.server");
+    let reservation: Awaited<ReturnType<typeof reserveFreeGeneration>> | undefined;
     try {
-      const { getVerifiedRecipePrefs } = await import("./plus.server");
-      const prefs = await getVerifiedRecipePrefs(getRequestHeader("authorization"), {
-        ...(data.dietary ? { dietary: data.dietary } : {}),
-        ...(data.servings !== undefined ? { servings: data.servings } : {}),
-      });
+      const { hasVerifiedPlus } = await import("./plus.server");
+      const plus = await hasVerifiedPlus(getRequestHeader("authorization"));
+      const dietary = plus ? data.dietary : undefined;
+      const servings = plus ? data.servings : undefined;
+      if (!plus) {
+        const attempt = await reserveFreeGeneration(data.browserId);
+        if (!attempt.reserved) {
+          return attempt.exhausted
+            ? { ok: false as const, upgrade: true as const, error: "You’ve used your 2 free recipe generations." }
+            : { ok: false as const, error: "Another recipe generation is in progress. Please wait and try again." };
+        }
+        reservation = attempt;
+      }
       const text = await streamResponseText([
         {
           type: "input_text",
           text: `You are a friendly home chef for busy young people. Available ingredients: ${data.ingredients.join(", ")}. Assume basic pantry staples exist (salt, pepper, oil, water).
 Filters: ${data.filters.length ? data.filters.join(", ") : "none"} (Quick = under 15 min).
 ${data.bonus ? "Make the recipes a bit more creative/restaurant-style." : ""}
-${prefs.dietary?.length ? `Dietary needs: ${prefs.dietary.join(", ")} — every recipe must respect these.` : ""}
-${prefs.servings ? `Cook for ${prefs.servings} people; scale quantities and steps accordingly.` : ""}
+${dietary?.length ? `Dietary needs: ${dietary.join(", ")} — every recipe must respect these.` : ""}
+${servings ? `Cook for ${servings} people; scale quantities and steps accordingly.` : ""}
 Suggest exactly 3 recipes. Recipes 1-2 must use ONLY the available ingredients (missing = []). Recipe 3 may need 1-2 extra ingredients listed in "missing".
 Reply ONLY with JSON: {"recipes":[{"title":string,"description":string (max 15 words),"minutes":number,"difficulty":"Easy"|"Medium"|"Hard","category":"pasta"|"bowl"|"stirfry"|"eggs","uses":string[],"missing":string[],"steps":string[] (4-7 short steps),"tags":string[]}]}`,
         },
       ]);
       const parsed = z.object({ recipes: z.array(recipeSchema).length(3) }).parse(extractJson<unknown>(text));
       if (parsed.recipes.slice(0, 2).some(r => r.missing.length > 0)) throw new Error("The AI suggested extra ingredients. Please try again.");
+      if (reservation && !(await reservation.finish(true))) {
+        throw new Error("Couldn't save your recipe allowance. Please try again.");
+      }
       return { ok: true as const, recipes: parsed.recipes.slice(0, 3) };
     } catch (e) {
+      await reservation?.finish(false).catch(() => {
+        console.warn("Could not release a recipe generation reservation.");
+      });
       return { ok: false as const, error: e instanceof z.ZodError ? "The AI returned an incomplete answer. Please try again." : e instanceof Error ? e.message : "Couldn't get recipes" };
     }
   });
