@@ -9,21 +9,30 @@ export function billingConfig() {
     FRIDGIE_BILLING_ORIGIN: origin,
     STRIPE_BILLING_MODE: mode,
   } = process.env;
-  if (
-    !key ||
-    !price ||
-    !webhook ||
-    !origin ||
-    !process.env["SUPABASE_URL"] ||
-    !process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
-    mode !== "test" ||
-    process.env["CONTEXT"] === "production" ||
-    !/^(sk|rk)_test_/.test(key)
-  )
+  if (process.env["CONTEXT"] === "production") return null;
+  const missing = Object.entries({
+    STRIPE_SECRET_KEY: key,
+    STRIPE_PLUS_PRICE_ID: price,
+    STRIPE_WEBHOOK_SECRET: webhook,
+    FRIDGIE_BILLING_ORIGIN: origin,
+    SUPABASE_URL: process.env["SUPABASE_URL"],
+    SUPABASE_SERVICE_ROLE_KEY: process.env["SUPABASE_SERVICE_ROLE_KEY"],
+  }).filter(([, value]) => !value).map(([name]) => name);
+  if (!key || !price || !webhook || !origin || missing.length > 0) {
+    console.warn("[Stripe] Missing billing configuration:", missing.join(", "));
     return null;
+  }
+  if (mode !== "test" || !/^(sk|rk)_test_/.test(key)) {
+    console.warn("[Stripe] Billing requires test mode and a test secret key.");
+    return null;
+  }
   try {
-    if (new URL(origin).origin !== origin || !origin.startsWith("https://")) return null;
+    if (new URL(origin).origin !== origin || !origin.startsWith("https://")) {
+      console.warn("[Stripe] Billing origin must be an exact HTTPS origin.");
+      return null;
+    }
   } catch {
+    console.warn("[Stripe] Billing origin is not a valid URL.");
     return null;
   }
   return { key, price, webhook, origin, live: false };
