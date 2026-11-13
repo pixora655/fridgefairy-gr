@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, ShoppingBasket, X } from "lucide-react";
 import { useChefStore } from "@/lib/store";
 import { weekDays, dayLabel } from "@/lib/plus";
 import { PlusGate } from "@/components/plus-gate";
+import { NutritionPlanner } from "@/components/nutrition-planner";
 import { RecipeImage } from "@/components/recipe-image";
 
 export const Route = createFileRoute("/plan")({
@@ -47,6 +48,7 @@ function Planner() {
 
   return (
     <main className="flex flex-1 animate-rise flex-col gap-3">
+      <NutritionPlanner />
       <p className="text-sm text-muted-foreground">Assign a recipe to each day from your cookbook and saved recipes.</p>
       {days.map((d) => {
         const r = store.plan[d];
